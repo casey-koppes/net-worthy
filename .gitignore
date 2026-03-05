@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local mock database (contains user data)
+.mock-db.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*

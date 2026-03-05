@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background circle (planet) -->
+  <circle cx="100" cy="100" r="80" fill="url(#gradient)" />
+
+  <!-- Saturn ring - back portion (behind planet) -->
+  <path
+    d="M5 155 L30 135 L55 125"
+    stroke="#7358ff"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+    opacity="0.4"
+  />
+  <path
+    d="M5 155 L30 135 L55 125"
+    stroke="white"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+    opacity="0.4"
+  />
+
+  <!-- Saturn ring - front portion (in front of planet) with purple outline -->
+  <path
+    d="M55 125 L85 115 L115 105 L145 75 L175 55 L195 40"
+    stroke="#7358ff"
+    stroke-width="12"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <path
+    d="M55 125 L85 115 L115 105 L145 75 L175 55 L195 40"
+    stroke="white"
+    stroke-width="6"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Network dots on the chart ring -->
+  <circle cx="55" cy="125" r="8" fill="#7358ff" stroke="white" stroke-width="3" />
+  <circle cx="85" cy="115" r="8" fill="#7358ff" stroke="white" stroke-width="3" />
+  <circle cx="115" cy="105" r="8" fill="#7358ff" stroke="white" stroke-width="3" />
+  <circle cx="145" cy="75" r="8" fill="#7358ff" stroke="white" stroke-width="3" />
+  <circle cx="175" cy="55" r="8" fill="#7358ff" stroke="white" stroke-width="3" />
+
+  <!-- Connection lines (subtle network effect) -->
+  <line x1="55" y1="125" x2="115" y2="105" stroke="white" stroke-width="2" opacity="0.3" />
+  <line x1="85" y1="115" x2="145" y2="75" stroke="white" stroke-width="2" opacity="0.3" />
+  <line x1="115" y1="105" x2="175" y2="55" stroke="white" stroke-width="2" opacity="0.3" />
+
+  <!-- Dollar sign in the center (moved up) -->
+  <text x="100" y="95" text-anchor="middle" font-size="50" font-weight="bold" fill="white" opacity="0.25" font-family="system-ui">$</text>
+
+  <!-- Person with plus icon (bottom right) - community/add friends -->
+  <g transform="translate(155, 155)">
+    <!-- Background circle -->
+    <circle cx="0" cy="0" r="22" fill="#7358ff" />
+    <!-- Person silhouette -->
+    <circle cx="-4" cy="-6" r="6" fill="white" />
+    <ellipse cx="-4" cy="6" rx="9" ry="7" fill="white" />
+    <!-- Plus sign -->
+    <line x1="10" y1="-2" x2="10" y2="8" stroke="white" stroke-width="3" stroke-linecap="round" />
+    <line x1="5" y1="3" x2="15" y2="3" stroke="white" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+</svg>

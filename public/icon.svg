@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Background circle -->
+  <circle cx="24" cy="24" r="22" fill="url(#iconGradient)" />
+
+  <!-- Rising chart line -->
+  <path
+    d="M10 34 L17 27 L24 30 L31 18 L38 12"
+    stroke="white"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Network dots -->
+  <circle cx="10" cy="34" r="3" fill="white" />
+  <circle cx="17" cy="27" r="3" fill="white" />
+  <circle cx="24" cy="30" r="3" fill="white" />
+  <circle cx="31" cy="18" r="3" fill="white" />
+  <circle cx="38" cy="12" r="3" fill="white" />
+
+  <defs>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+</svg>
