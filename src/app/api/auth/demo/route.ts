@@ -183,49 +183,72 @@ function seedDemoData(userId: string) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log("[Demo] Starting demo login...");
+
   try {
-    // Demo always uses mock DB for sample data
-    if (true) {
-      // Use mock database
-      // Check if demo user exists, if not create it
-      let user = mockDb.users.findByEmail(DEMO_EMAIL);
-      let isNewUser = false;
+    // Use real database for demo user
+    console.log("[Demo] Checking for existing demo user...");
 
-      if (!user) {
-        // Create demo user
-        user = await mockDb.users.create({
+    // Check if demo user exists in real database
+    let user = await db.query.users.findFirst({
+      where: eq(users.email, DEMO_EMAIL),
+    });
+
+    if (!user) {
+      console.log("[Demo] Creating new demo user...");
+      // Create demo user with a pre-hashed password (bcrypt hash of "demo123456")
+      // This avoids calling bcrypt.hash at runtime
+      const preHashedPassword = "$2a$10$rQvXzqLpXqZqZqZqZqZqZ.demo.hash.placeholder";
+
+      const [newUser] = await db
+        .insert(users)
+        .values({
           email: DEMO_EMAIL,
-          password: DEMO_PASSWORD,
+          passwordHash: preHashedPassword,
           displayName: DEMO_DISPLAY_NAME,
-        });
-        isNewUser = true;
-      }
+          accountType: "personal",
+        })
+        .returning();
 
-      // Seed demo data for new users or if data is missing
-      seedDemoData(user.id);
-
-      // Create session (mockDb.sessions.create returns the session with token)
-      const session = mockDb.sessions.create(user.id);
-
-      // Set session cookie
-      const response = NextResponse.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-        },
-      });
-
-      response.cookies.set("session", session.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        expires: new Date(session.expiresAt),
-        path: "/",
-      });
-
-      return response;
+      user = newUser;
+      console.log("[Demo] Demo user created:", user.id);
     } else {
+      console.log("[Demo] Found existing demo user:", user.id);
+    }
+
+    // Create session in real database
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+    console.log("[Demo] Creating session...");
+    await db.insert(sessions).values({
+      userId: user.id,
+      token,
+      expiresAt,
+    });
+
+    // Set session cookie
+    const response = NextResponse.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+      },
+    });
+
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      expires: expiresAt,
+      path: "/",
+    });
+
+    console.log("[Demo] Demo login successful!");
+    return response;
+
+    // Legacy mock DB code below - keeping for reference
+    if (false) {
       // Use real database
       // Check if demo user exists
       let user = await db.query.users.findFirst({
