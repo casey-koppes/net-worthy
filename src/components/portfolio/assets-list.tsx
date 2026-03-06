@@ -60,6 +60,12 @@ const categoryLabels: Record<string, string> = {
   other: "Other",
 };
 
+const categoryIcons: Record<string, string> = {
+  vehicle: "🚘",
+  real_estate: "🏠",
+  other: "📦",
+};
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -302,6 +308,7 @@ export function AssetsList({
                   onClick={() => toggleGroup(group.name.toLowerCase())}
                 >
                   <div className="flex items-center gap-3">
+                    <span className="text-2xl">{categoryIcons[group.category] || "📦"}</span>
                     <div className="flex flex-col">
                       <span className="font-medium">{group.name}</span>
                       <span className="text-sm text-muted-foreground">

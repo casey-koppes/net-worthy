@@ -23,8 +23,10 @@ interface Activity {
 function getActionIcon(action: string): string {
   switch (action) {
     case "account_added":
+    case "plaid_connected":
       return "+";
     case "account_removed":
+    case "plaid_disconnected":
       return "-";
     case "balance_changed":
       return "$";
@@ -65,6 +67,10 @@ function formatAction(action: string, metadata: Record<string, unknown> | null):
       return `Connected ${name || "a new account"}`;
     case "account_removed":
       return `Disconnected ${name || "an account"}`;
+    case "plaid_connected":
+      return `Connected ${name || "a financial institution"}${metadata?.accountsCount ? ` (${metadata.accountsCount} accounts)` : ""}`;
+    case "plaid_disconnected":
+      return `Disconnected ${name || "a financial institution"}${metadata?.accountsCount ? ` (${metadata.accountsCount} accounts)` : ""}`;
     case "balance_changed":
       return `Balance updated for ${name || "an account"}`;
     case "wallet_added":

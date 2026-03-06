@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
-import { db, manualAssets } from "@/lib/db";
+import { db, manualAssets, activityLog } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { encryptNumber, decryptNumber } from "@/lib/encryption";
 
@@ -121,6 +121,20 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    // Log activity for real database
+    await db.insert(activityLog).values({
+      userId,
+      action: "asset_added",
+      entityType: "manual_asset",
+      entityId: asset.id,
+      metadata: {
+        name,
+        category,
+        value: parseFloat(value),
+        isAsset: isAsset ?? true,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       asset: {
@@ -201,6 +215,12 @@ export async function PUT(request: NextRequest) {
       });
     }
 
+    // Get old asset data for activity log
+    const oldAsset = await db.query.manualAssets.findFirst({
+      where: eq(manualAssets.id, assetId),
+    });
+    const oldValue = oldAsset ? decryptNumber(oldAsset.valueEncrypted, userId) : 0;
+
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
@@ -216,6 +236,25 @@ export async function PUT(request: NextRequest) {
       .set(updateData)
       .where(eq(manualAssets.id, assetId))
       .returning();
+
+    // Log activity for real database
+    const newValue = value !== undefined ? parseFloat(value) : oldValue;
+    const valueChange = newValue - oldValue;
+
+    await db.insert(activityLog).values({
+      userId,
+      action: "balance_changed",
+      entityType: "manual_asset",
+      entityId: assetId,
+      metadata: {
+        name: asset.name,
+        category: asset.category,
+        oldValue,
+        newValue,
+        valueChange,
+        isAsset: asset.isAsset,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -242,6 +281,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const assetId = searchParams.get("assetId");
+    const userId = searchParams.get("userId");
 
     if (!assetId) {
       return NextResponse.json(
@@ -275,7 +315,29 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Get asset info before deleting for activity log
+    const asset = await db.query.manualAssets.findFirst({
+      where: eq(manualAssets.id, assetId),
+    });
+
     await db.delete(manualAssets).where(eq(manualAssets.id, assetId));
+
+    // Log activity for real database
+    if (asset && userId) {
+      const assetValue = decryptNumber(asset.valueEncrypted, userId);
+      await db.insert(activityLog).values({
+        userId,
+        action: "asset_removed",
+        entityType: "manual_asset",
+        entityId: assetId,
+        metadata: {
+          name: asset.name,
+          category: asset.category,
+          value: assetValue,
+          isAsset: asset.isAsset,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

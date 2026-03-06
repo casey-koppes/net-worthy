@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, plaidConnections, accounts } from "@/lib/db";
+import { db, plaidConnections, accounts, activityLog } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { plaidClient } from "@/lib/plaid/client";
-import { decrypt, encryptNumber } from "@/lib/encryption";
+import { decrypt, encryptNumber, decryptNumber } from "@/lib/encryption";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,6 +47,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingAccount) {
+        // Get old balance for comparison
+        const oldBalance = decryptNumber(existingAccount.balanceEncrypted, userId);
+        const balanceChange = balance - oldBalance;
+
         // Update existing account
         await db
           .update(accounts)
@@ -60,6 +64,23 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date(),
           })
           .where(eq(accounts.id, existingAccount.id));
+
+        // Log activity if balance changed
+        if (balanceChange !== 0) {
+          await db.insert(activityLog).values({
+            userId,
+            action: "balance_changed",
+            entityType: "plaid_account",
+            entityId: existingAccount.id,
+            metadata: {
+              name: existingAccount.name,
+              oldValue: oldBalance,
+              newValue: balance,
+              valueChange: balanceChange,
+              isAsset: existingAccount.isAsset,
+            },
+          });
+        }
       } else {
         // Create new account (in case new accounts were added)
         const isAsset = !["credit", "loan"].includes(plaidAccount.type);
@@ -68,7 +89,7 @@ export async function POST(request: NextRequest) {
           category = "investment";
         }
 
-        await db.insert(accounts).values({
+        const [newAccount] = await db.insert(accounts).values({
           userId,
           connectionId,
           plaidAccountId: plaidAccount.account_id,
@@ -88,6 +109,20 @@ export async function POST(request: NextRequest) {
           isManual: false,
           visibility: "private",
           lastSynced: new Date(),
+        }).returning();
+
+        // Log activity for new account discovered during sync
+        await db.insert(activityLog).values({
+          userId,
+          action: "account_added",
+          entityType: "plaid_account",
+          entityId: newAccount.id,
+          metadata: {
+            name: plaidAccount.name,
+            type: plaidAccount.type,
+            value: balance,
+            isAsset,
+          },
         });
       }
     }

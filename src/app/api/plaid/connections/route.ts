@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, plaidConnections, accounts } from "@/lib/db";
+import { db, plaidConnections, accounts, activityLog } from "@/lib/db";
 import { eq, and, count } from "drizzle-orm";
 import { plaidClient } from "@/lib/plaid/client";
 import { decrypt } from "@/lib/encryption";
@@ -90,11 +90,29 @@ export async function DELETE(request: NextRequest) {
       // Continue with deletion even if Plaid removal fails
     }
 
+    // Get account count before deletion
+    const accountCount = await db
+      .select({ count: count() })
+      .from(accounts)
+      .where(eq(accounts.connectionId, connectionId));
+
     // Delete associated accounts first (cascade should handle this, but being explicit)
     await db.delete(accounts).where(eq(accounts.connectionId, connectionId));
 
     // Delete the connection
     await db.delete(plaidConnections).where(eq(plaidConnections.id, connectionId));
+
+    // Log activity
+    await db.insert(activityLog).values({
+      userId,
+      action: "plaid_disconnected",
+      entityType: "plaid_connection",
+      entityId: connectionId,
+      metadata: {
+        institutionName: connection.institutionName,
+        accountsCount: accountCount[0]?.count || 0,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -93,11 +93,78 @@ function getCategoryColor(category: string): string {
   }
 }
 
+// Map tickers to their exchange for Google Finance URLs
+const TICKER_EXCHANGES: Record<string, string> = {
+  // NASDAQ stocks
+  AAPL: "NASDAQ", MSFT: "NASDAQ", GOOGL: "NASDAQ", GOOG: "NASDAQ", AMZN: "NASDAQ",
+  META: "NASDAQ", NVDA: "NASDAQ", TSLA: "NASDAQ", AMD: "NASDAQ", INTC: "NASDAQ",
+  NFLX: "NASDAQ", PYPL: "NASDAQ", ADBE: "NASDAQ", CSCO: "NASDAQ", CMCSA: "NASDAQ",
+  PEP: "NASDAQ", COST: "NASDAQ", AVGO: "NASDAQ", TXN: "NASDAQ", QCOM: "NASDAQ",
+  SBUX: "NASDAQ", MDLZ: "NASDAQ", GILD: "NASDAQ", ISRG: "NASDAQ", VRTX: "NASDAQ",
+  REGN: "NASDAQ", ATVI: "NASDAQ", BKNG: "NASDAQ", FISV: "NASDAQ", ADP: "NASDAQ",
+  LRCX: "NASDAQ", KLAC: "NASDAQ", MCHP: "NASDAQ", SNPS: "NASDAQ", CDNS: "NASDAQ",
+  ORLY: "NASDAQ", MNST: "NASDAQ", CTAS: "NASDAQ", PCAR: "NASDAQ", PAYX: "NASDAQ",
+  ROST: "NASDAQ", ODFL: "NASDAQ", FAST: "NASDAQ", DXCM: "NASDAQ", IDXX: "NASDAQ",
+  ZM: "NASDAQ", DOCU: "NASDAQ", SNOW: "NASDAQ", PLTR: "NASDAQ", COIN: "NASDAQ",
+  RBLX: "NASDAQ", NET: "NASDAQ", DDOG: "NASDAQ", MDB: "NASDAQ", CRWD: "NASDAQ",
+  OKTA: "NASDAQ", TWLO: "NASDAQ", ZS: "NASDAQ", TEAM: "NASDAQ", WDAY: "NASDAQ",
+  SPLK: "NASDAQ", FTNT: "NASDAQ", PANW: "NASDAQ", ABNB: "NASDAQ", UBER: "NASDAQ",
+  LYFT: "NASDAQ", DASH: "NASDAQ", RIVN: "NASDAQ", LCID: "NASDAQ", MARA: "NASDAQ",
+  RIOT: "NASDAQ", MSTR: "NASDAQ", HOOD: "NASDAQ", SOFI: "NASDAQ", AFRM: "NASDAQ",
+  SQ: "NASDAQ", SHOP: "NASDAQ", SPOT: "NASDAQ", SNAP: "NASDAQ", PINS: "NASDAQ",
+  U: "NASDAQ", ROKU: "NASDAQ", TTD: "NASDAQ", MTCH: "NASDAQ", ETSY: "NASDAQ",
+  DKNG: "NASDAQ", PENN: "NASDAQ", EA: "NASDAQ", WBD: "NASDAQ", NXPI: "NASDAQ",
+  MRVL: "NASDAQ", ON: "NASDAQ", SWKS: "NASDAQ", ALGN: "NASDAQ", ILMN: "NASDAQ",
+  BIIB: "NASDAQ", MRNA: "NASDAQ", SGEN: "NASDAQ", EXAS: "NASDAQ", ENPH: "NASDAQ",
+  SEDG: "NASDAQ", FSLR: "NASDAQ", JD: "NASDAQ", PDD: "NASDAQ", BIDU: "NASDAQ",
+  NTES: "NASDAQ", TCOM: "NASDAQ", BILI: "NASDAQ", STRC: "NASDAQ",
+
+  // NYSE stocks
+  JPM: "NYSE", BAC: "NYSE", WFC: "NYSE", GS: "NYSE", MS: "NYSE", C: "NYSE",
+  V: "NYSE", MA: "NYSE", AXP: "NYSE", BLK: "NYSE", SCHW: "NYSE", USB: "NYSE",
+  PNC: "NYSE", TFC: "NYSE", COF: "NYSE", DFS: "NYSE", SYF: "NYSE", AIG: "NYSE",
+  MET: "NYSE", PRU: "NYSE", AFL: "NYSE", TRV: "NYSE", CB: "NYSE", ALL: "NYSE",
+  WMT: "NYSE", TGT: "NYSE", HD: "NYSE", LOW: "NYSE", CVS: "NYSE", WBA: "NYSE",
+  KR: "NYSE", DG: "NYSE", DLTR: "NYSE", FIVE: "NYSE", TJX: "NYSE", M: "NYSE",
+  JWN: "NYSE", KSS: "NYSE", GPS: "NYSE", BBY: "NYSE", GME: "NYSE", AMC: "NYSE",
+  NKE: "NYSE", UA: "NYSE", LULU: "NYSE", VFC: "NYSE", PVH: "NYSE", RL: "NYSE",
+  MCD: "NYSE", YUM: "NYSE", SBUX: "NYSE", DPZ: "NYSE", CMG: "NYSE", DRI: "NYSE",
+  DIS: "NYSE", PARA: "NYSE", FOX: "NYSE", FOXA: "NYSE", NYT: "NYSE", NWS: "NYSE",
+  JNJ: "NYSE", PFE: "NYSE", MRK: "NYSE", ABBV: "NYSE", BMY: "NYSE", LLY: "NYSE",
+  AMGN: "NYSE", UNH: "NYSE", CI: "NYSE", HUM: "NYSE", CVS: "NYSE", MCK: "NYSE",
+  CAH: "NYSE", ABC: "NYSE", COR: "NYSE", TMO: "NYSE", DHR: "NYSE", ABT: "NYSE",
+  MDT: "NYSE", SYK: "NYSE", BDX: "NYSE", BSX: "NYSE", ZBH: "NYSE", EW: "NYSE",
+  XOM: "NYSE", CVX: "NYSE", COP: "NYSE", EOG: "NYSE", SLB: "NYSE", HAL: "NYSE",
+  OXY: "NYSE", PSX: "NYSE", VLO: "NYSE", MPC: "NYSE", PXD: "NYSE", DVN: "NYSE",
+  FANG: "NYSE", HES: "NYSE", APA: "NYSE", MRO: "NYSE", KMI: "NYSE", WMB: "NYSE",
+  OKE: "NYSE", ET: "NYSE", EPD: "NYSE", MPLX: "NYSE", PAA: "NYSE", ENB: "NYSE",
+  CAT: "NYSE", DE: "NYSE", MMM: "NYSE", GE: "NYSE", HON: "NYSE", UPS: "NYSE",
+  FDX: "NYSE", UNP: "NYSE", CSX: "NYSE", NSC: "NYSE", DAL: "NYSE", UAL: "NYSE",
+  LUV: "NYSE", AAL: "NYSE", BA: "NYSE", LMT: "NYSE", NOC: "NYSE", RTX: "NYSE",
+  GD: "NYSE", TXT: "NYSE", HII: "NYSE", IBM: "NYSE", ORCL: "NYSE", CRM: "NYSE",
+  ACN: "NYSE", SAP: "NYSE", NOW: "NYSE", INTU: "NYSE", ADSK: "NYSE", ANSS: "NYSE",
+  T: "NYSE", VZ: "NYSE", TMUS: "NYSE", CHTR: "NYSE", TWX: "NYSE", DISH: "NYSE",
+
+  // ETFs - typically on NYSE Arca
+  SPY: "NYSEARCA", VOO: "NYSEARCA", VTI: "NYSEARCA", IVV: "NYSEARCA", QQQ: "NASDAQ",
+  DIA: "NYSEARCA", IWM: "NYSEARCA", EFA: "NYSEARCA", EEM: "NYSEARCA", VEA: "NYSEARCA",
+  VWO: "NYSEARCA", AGG: "NYSEARCA", BND: "NYSEARCA", LQD: "NYSEARCA", HYG: "NYSEARCA",
+  TLT: "NASDAQ", IEF: "NYSEARCA", SHY: "NYSEARCA", TIP: "NYSEARCA", GOVT: "NYSEARCA",
+  GLD: "NYSEARCA", SLV: "NYSEARCA", IAU: "NYSEARCA", GDX: "NYSEARCA", GDXJ: "NYSEARCA",
+  XLF: "NYSEARCA", XLK: "NYSEARCA", XLV: "NYSEARCA", XLE: "NYSEARCA", XLI: "NYSEARCA",
+  XLP: "NYSEARCA", XLY: "NYSEARCA", XLU: "NYSEARCA", XLB: "NYSEARCA", XLRE: "NYSEARCA",
+  VIG: "NYSEARCA", VYM: "NYSEARCA", SCHD: "NYSEARCA", DVY: "NYSEARCA", HDV: "NYSEARCA",
+  VNQ: "NYSEARCA", IYR: "NYSEARCA", REM: "NYSEARCA", MORT: "NYSEARCA", VGT: "NYSEARCA",
+  ARKK: "NYSEARCA", ARKG: "NYSEARCA", ARKW: "NYSEARCA", ARKF: "NYSEARCA", ARKQ: "NYSEARCA",
+  VTV: "NYSEARCA", VUG: "NYSEARCA", ITOT: "NYSEARCA", IEFA: "NYSEARCA", IEMG: "NYSEARCA",
+};
+
 // Generate Google Finance URL for a ticker
 function getGoogleFinanceUrl(ticker: string | null): string | null {
   if (!ticker) return null;
-  // Google Finance URL format - it auto-detects the exchange
-  return `https://www.google.com/finance/quote/${ticker.toUpperCase()}`;
+  const upperTicker = ticker.toUpperCase();
+  const exchange = TICKER_EXCHANGES[upperTicker] || "NASDAQ"; // Default to NASDAQ
+  return `https://www.google.com/finance/quote/${upperTicker}:${exchange}`;
 }
 
 // Map ticker symbols to Brandfetch brand IDs
@@ -546,36 +613,36 @@ export function InvestmentsList({
               <div key={group.name} className="rounded-lg border overflow-hidden">
                 {/* Main row - clickable to expand */}
                 <div
-                  className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? "bg-muted/30" : ""}`}
+                  className={`group flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? "bg-muted/30" : ""}`}
                   onClick={() => toggleGroup(group.name.toLowerCase())}
                 >
                   <div className="flex items-center gap-3">
                     <StockLogo ticker={group.ticker} name={group.name} />
                     <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{group.name}</span>
+                      <span className="font-medium">{group.name}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-muted-foreground">
+                          {group.ticker || ""}{group.ticker && group.totalShares > 0 ? " - " : ""}
+                          {group.totalShares > 0 ? `${group.totalShares} shares` : ""}
+                        </span>
                         {group.ticker && (
                           <a
                             href={getGoogleFinanceUrl(group.ticker) || "#"}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-muted-foreground hover:text-primary transition-colors"
+                            className="text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
                             title={`View ${group.ticker} on Google Finance`}
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         )}
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {group.ticker || ""}{group.ticker && group.totalShares > 0 ? " - " : ""}
-                        {group.totalShares > 0 ? `${group.totalShares} shares` : ""}
                         {hasMultipleItems && (
-                          <span className="ml-2 text-xs text-blue-600">
+                          <span className="ml-1 text-xs text-blue-600">
                             ({group.items.length} records)
                           </span>
                         )}
-                      </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">

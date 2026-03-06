@@ -1,6 +1,6 @@
 "use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 interface AllocationData {
   name: string;
@@ -95,11 +95,6 @@ export function AllocationChart({ data }: AllocationChartProps) {
             border: "1px solid hsl(var(--border))",
             borderRadius: "8px",
           }}
-        />
-        <Legend
-          formatter={(value) => (
-            <span className="text-sm text-muted-foreground">{value}</span>
-          )}
         />
       </PieChart>
     </ResponsiveContainer>

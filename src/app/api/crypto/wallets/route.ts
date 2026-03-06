@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, cryptoWallets } from "@/lib/db";
+import { db, cryptoWallets, activityLog } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { encryptNumber, decryptNumber } from "@/lib/encryption";
 import { fetchWalletData, CHAIN_CONFIGS } from "@/lib/crypto/chains";
@@ -162,6 +162,20 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    // Log activity for real database
+    await db.insert(activityLog).values({
+      userId,
+      action: "wallet_added",
+      entityType: "crypto_wallet",
+      entityId: wallet.id,
+      metadata: {
+        chain,
+        address: trimmedAddress,
+        label: label || null,
+        balanceUsd,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       wallet: {
@@ -222,9 +236,33 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Get wallet info before deleting for activity log
+    const wallet = await db.query.cryptoWallets.findFirst({
+      where: eq(cryptoWallets.id, walletId),
+    });
+
     await db
       .delete(cryptoWallets)
       .where(eq(cryptoWallets.id, walletId));
+
+    // Log activity for real database
+    if (wallet) {
+      const balanceUsd = wallet.balanceUsdEncrypted
+        ? decryptNumber(wallet.balanceUsdEncrypted, userId)
+        : 0;
+      await db.insert(activityLog).values({
+        userId,
+        action: "wallet_removed",
+        entityType: "crypto_wallet",
+        entityId: walletId,
+        metadata: {
+          chain: wallet.chain,
+          address: wallet.address,
+          label: wallet.label,
+          balanceUsd,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
