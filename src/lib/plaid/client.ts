@@ -2,7 +2,7 @@ import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } fro
 
 // Get Plaid environment
 function getPlaidEnv(): string {
-  const env = process.env.PLAID_ENV || "sandbox";
+  const env = (process.env.PLAID_ENV || "sandbox").trim();
   switch (env) {
     case "production":
       return PlaidEnvironments.production;
@@ -18,12 +18,16 @@ let _plaidClient: PlaidApi | null = null;
 
 function getPlaidClient(): PlaidApi {
   if (!_plaidClient) {
+    // Trim env vars to remove any trailing whitespace/newlines
+    const clientId = (process.env.PLAID_CLIENT_ID || "").trim();
+    const secret = (process.env.PLAID_SECRET || "").trim();
+
     const configuration = new Configuration({
       basePath: getPlaidEnv(),
       baseOptions: {
         headers: {
-          "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
-          "PLAID-SECRET": process.env.PLAID_SECRET,
+          "PLAID-CLIENT-ID": clientId,
+          "PLAID-SECRET": secret,
         },
       },
     });
