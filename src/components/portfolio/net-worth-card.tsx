@@ -149,6 +149,7 @@ export function NetWorthCard({
                       performance.totals.currentAssets - (performance.totals.startAssets ?? 0)
                     }
                     size="sm"
+                    inline
                     className="[&_span]:!text-[#737373]"
                   />
                 )}
@@ -165,6 +166,7 @@ export function NetWorthCard({
                       performance.totals.currentLiabilities - (performance.totals.startLiabilities ?? 0)
                     }
                     size="sm"
+                    inline
                     className="[&_span]:!text-[#737373]"
                   />
                 )}

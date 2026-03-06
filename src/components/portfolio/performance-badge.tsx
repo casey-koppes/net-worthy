@@ -10,6 +10,7 @@ interface PerformanceBadgeProps {
   size?: "sm" | "default";
   className?: string;
   periodLabel?: string;
+  inline?: boolean;
 }
 
 function formatDollarChange(amount: number): string {
@@ -39,6 +40,7 @@ export function PerformanceBadge({
   size = "default",
   className,
   periodLabel,
+  inline = false,
 }: PerformanceBadgeProps) {
   // Handle null/undefined
   if (value === null || value === undefined) {
@@ -76,7 +78,8 @@ export function PerformanceBadge({
   return (
     <span
       className={cn(
-        "inline-flex flex-col items-end font-medium whitespace-nowrap",
+        "inline-flex items-end font-medium whitespace-nowrap",
+        inline ? "flex-row gap-1" : "flex-col",
         size === "sm" ? "text-xs" : "text-sm",
         className
       )}
