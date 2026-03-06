@@ -31,10 +31,17 @@ export async function POST(request: NextRequest) {
       linkToken: response.data.link_token,
       expiration: response.data.expiration,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to create link token:", error);
+
+    // Log detailed Plaid error if available
+    if (error?.response?.data) {
+      console.error("Plaid error details:", JSON.stringify(error.response.data, null, 2));
+    }
+
+    const errorMessage = error?.response?.data?.error_message || "Failed to create link token";
     return NextResponse.json(
-      { error: "Failed to create link token" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

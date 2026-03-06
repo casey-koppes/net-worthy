@@ -30,13 +30,9 @@ export const plaidClient = new PlaidApi(configuration);
 // Export commonly used types and constants
 export { Products, CountryCode };
 
-// Default products to request
+// Default products to request (using standard sandbox-compatible products)
 export const DEFAULT_PRODUCTS: Products[] = [
   Products.Transactions,
-  Products.Auth,
-  Products.Identity,
-  Products.Investments,
-  Products.Liabilities,
 ];
 
 // Supported country codes
