@@ -45,13 +45,14 @@ const PERIODS = [
   { value: "all", label: "All" },
 ];
 
+// Different shades of green for asset allocation
 const ASSET_COLORS = {
-  bank: "#3b82f6",
-  investment: "#22c55e",
-  crypto: "#f59e0b",
-  realEstate: "#8b5cf6",
-  vehicle: "#ec4899",
-  other: "#6b7280",
+  bank: "#166534",      // green-800
+  investment: "#15803d", // green-700
+  crypto: "#16a34a",     // green-600
+  realEstate: "#22c55e", // green-500
+  vehicle: "#4ade80",    // green-400
+  other: "#86efac",      // green-300
 };
 
 const LIABILITY_COLORS = {
