@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertCircle,
   CheckCircle,
   Lightbulb,
+  MessageCircle,
   RefreshCw,
+  Send,
   Shield,
   TrendingUp,
+  User,
+  Bot,
 } from "lucide-react";
 
 interface PortfolioHolding {
@@ -29,6 +34,11 @@ interface PortfolioInsights {
   recommendations: string[];
   diversificationScore: number;
   riskLevel: "Low" | "Medium" | "High";
+}
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 interface InvestmentInsightsProps {
@@ -76,6 +86,58 @@ export function InvestmentInsights({
   const [insights, setInsights] = useState<PortfolioInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState("");
+  const [isAskingQuestion, setIsAskingQuestion] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom of chat when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  async function askQuestion() {
+    if (!currentQuestion.trim() || isAskingQuestion) return;
+
+    const question = currentQuestion.trim();
+    setCurrentQuestion("");
+    setIsAskingQuestion(true);
+
+    // Add user message immediately
+    setChatMessages((prev) => [...prev, { role: "user", content: question }]);
+
+    try {
+      const res = await fetch("/api/portfolio/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          holdings,
+          totalValue,
+          insights,
+          chatHistory: chatMessages,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages((prev) => [...prev, { role: "assistant", content: data.answer }]);
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Sorry, I couldn't process your question. Please try again." },
+        ]);
+      }
+    } catch (err) {
+      console.error("Failed to ask question:", err);
+      setChatMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
+      ]);
+    } finally {
+      setIsAskingQuestion(false);
+    }
+  }
 
   async function generateInsights() {
     if (holdings.length === 0) return;
@@ -246,13 +308,104 @@ export function InvestmentInsights({
         </ul>
       </div>
 
-      {/* Refresh */}
-      <div className="pt-2 border-t">
+      {/* AI Chat Section */}
+      <div className="pt-4 border-t">
+        <h5 className="font-medium flex items-center gap-2 mb-3">
+          <MessageCircle className="h-4 w-4 text-primary" />
+          Ask AI About Your Portfolio
+        </h5>
+
+        {/* Chat Messages */}
+        {chatMessages.length > 0 && (
+          <div className="mb-3 max-h-64 overflow-y-auto space-y-3 rounded-lg border bg-muted/30 p-3">
+            {chatMessages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "assistant" && (
+                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+                    <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                  </div>
+                )}
+                <div
+                  className={`rounded-lg px-3 py-2 max-w-[85%] text-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background border"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+                {msg.role === "user" && (
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {isAskingQuestion && (
+              <div className="flex gap-2 justify-start">
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                </div>
+                <div className="rounded-lg px-3 py-2 bg-background border text-sm">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin inline mr-2" />
+                  Thinking...
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        )}
+
+        {/* Question Input */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Ask about your investments..."
+            value={currentQuestion}
+            onChange={(e) => setCurrentQuestion(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && askQuestion()}
+            disabled={isAskingQuestion}
+            className="flex-1"
+          />
+          <Button
+            size="icon"
+            onClick={askQuestion}
+            disabled={!currentQuestion.trim() || isAskingQuestion}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Suggestion Chips */}
+        {chatMessages.length === 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {[
+              "How can I improve my diversification?",
+              "What's my biggest risk?",
+              "Should I rebalance?",
+              "Explain my grade",
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => {
+                  setCurrentQuestion(suggestion);
+                }}
+                className="text-xs px-2 py-1 rounded-full border hover:bg-muted transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Regenerate Button */}
         <Button
           variant="ghost"
           size="sm"
           onClick={generateInsights}
-          className="w-full text-muted-foreground"
+          className="w-full text-muted-foreground mt-3"
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           Regenerate Analysis
