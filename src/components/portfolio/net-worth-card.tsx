@@ -139,37 +139,35 @@ export function NetWorthCard({
             <div className="grid grid-cols-2 gap-8">
               <div className="space-y-1 text-right">
                 <p className="text-sm text-muted-foreground">Total Assets</p>
-                <div className="flex items-baseline justify-end gap-2">
-                  <p className="text-xl font-semibold text-green-600">
-                    {formatCurrency(totalAssets)}
-                  </p>
-                  {!isLoadingPerformance && performance?.totals && (
-                    <PerformanceBadge
-                      value={performance.totals.assetsChange}
-                      dollarChange={
-                        performance.totals.currentAssets - (performance.totals.startAssets ?? 0)
-                      }
-                      size="sm"
-                    />
-                  )}
-                </div>
+                <p className="text-xl font-semibold text-green-600">
+                  {formatCurrency(totalAssets)}
+                </p>
+                {!isLoadingPerformance && performance?.totals && (
+                  <PerformanceBadge
+                    value={performance.totals.assetsChange}
+                    dollarChange={
+                      performance.totals.currentAssets - (performance.totals.startAssets ?? 0)
+                    }
+                    size="sm"
+                    className="[&_span]:!text-[#737373]"
+                  />
+                )}
               </div>
               <div className="space-y-1 text-right">
                 <p className="text-sm text-muted-foreground">Total Liabilities</p>
-                <div className="flex items-baseline justify-end gap-2">
-                  <p className="text-xl font-semibold text-red-600">
-                    {formatCurrency(totalLiabilities)}
-                  </p>
-                  {!isLoadingPerformance && performance?.totals && (
-                    <PerformanceBadge
-                      value={performance.totals.liabilitiesChange}
-                      dollarChange={
-                        performance.totals.currentLiabilities - (performance.totals.startLiabilities ?? 0)
-                      }
-                      size="sm"
-                    />
-                  )}
-                </div>
+                <p className="text-xl font-semibold text-red-600">
+                  {formatCurrency(totalLiabilities)}
+                </p>
+                {!isLoadingPerformance && performance?.totals && (
+                  <PerformanceBadge
+                    value={performance.totals.liabilitiesChange}
+                    dollarChange={
+                      performance.totals.currentLiabilities - (performance.totals.startLiabilities ?? 0)
+                    }
+                    size="sm"
+                    className="[&_span]:!text-[#737373]"
+                  />
+                )}
               </div>
             </div>
           </div>
