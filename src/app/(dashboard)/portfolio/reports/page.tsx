@@ -55,11 +55,12 @@ const ASSET_COLORS = {
   other: "#86efac",      // green-300
 };
 
+// Different shades of red for liability allocation
 const LIABILITY_COLORS = {
-  mortgage: "#ef4444",
-  loan: "#f97316",
-  credit: "#eab308",
-  other: "#dc2626",
+  mortgage: "#991b1b", // red-800 (darkest)
+  loan: "#b91c1c",     // red-700
+  credit: "#dc2626",   // red-600
+  other: "#f87171",    // red-400 (lightest)
 };
 
 function formatCurrency(amount: number): string {
