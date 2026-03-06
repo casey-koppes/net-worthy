@@ -93,18 +93,19 @@ function getCategoryColor(category: string): string {
   }
 }
 
-// Map ticker symbols to company domains for Brandfetch logos
-function getCompanyDomain(ticker: string | null, name: string): string | null {
+// Map ticker symbols to Brandfetch brand IDs
+function getBrandfetchId(ticker: string | null, name: string): string | null {
   if (!ticker && !name) return null;
 
   const tickerUpper = ticker?.toUpperCase() || "";
   const nameLower = name.toLowerCase();
 
-  // Map popular tickers to domains
-  const tickerToDomain: Record<string, string> = {
+  // Map popular tickers to Brandfetch brand IDs
+  // Find IDs at: https://brandfetch.com/{company}
+  const tickerToBrandId: Record<string, string> = {
     // Tech Giants
     AAPL: "apple.com",
-    MSFT: "microsoft.com",
+    MSFT: "idchmboHEZ", // Microsoft
     GOOGL: "google.com",
     GOOG: "google.com",
     AMZN: "amazon.com",
@@ -115,7 +116,7 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
     INTC: "intel.com",
     IBM: "ibm.com",
     ORCL: "oracle.com",
-    CRM: "salesforce.com",
+    CRM: "idsNTDpdQb", // Salesforce
     ADBE: "adobe.com",
     NFLX: "netflix.com",
     PYPL: "paypal.com",
@@ -127,6 +128,7 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
     SNAP: "snapchat.com",
     PINS: "pinterest.com",
     TWTR: "twitter.com",
+    X: "x.com",
     SPOT: "spotify.com",
     ZM: "zoom.us",
     DOCU: "docusign.com",
@@ -140,6 +142,7 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
     MDB: "mongodb.com",
     CRWD: "crowdstrike.com",
     OKTA: "okta.com",
+    TWLO: "idT7wVo_zL", // Twilio
 
     // Finance
     JPM: "jpmorgan.com",
@@ -209,14 +212,14 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
   };
 
   // Check ticker first
-  if (tickerToDomain[tickerUpper]) {
-    return tickerToDomain[tickerUpper];
+  if (tickerToBrandId[tickerUpper]) {
+    return tickerToBrandId[tickerUpper];
   }
 
   // Check if name contains a company we know
-  const namePatterns: Array<[string, string]> = [
+  const namePatterns: Array<[string, string | null]> = [
     ["apple", "apple.com"],
-    ["microsoft", "microsoft.com"],
+    ["microsoft", "idchmboHEZ"],
     ["google", "google.com"],
     ["alphabet", "google.com"],
     ["amazon", "amazon.com"],
@@ -224,6 +227,7 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
     ["facebook", "meta.com"],
     ["nvidia", "nvidia.com"],
     ["tesla", "tesla.com"],
+    ["twilio", "idT7wVo_zL"],
     ["vanguard", "vanguard.com"],
     ["fidelity", "fidelity.com"],
     ["schwab", "schwab.com"],
@@ -234,22 +238,47 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
     ["retirement", null],
   ];
 
-  for (const [pattern, domain] of namePatterns) {
+  for (const [pattern, brandId] of namePatterns) {
     if (nameLower.includes(pattern)) {
-      return domain;
+      return brandId;
     }
   }
 
   return null;
 }
 
-// Get logo URL using Clearbit's free logo API
+// Get logo URL from Brandfetch CDN
 function getStockLogo(ticker: string | null, name: string): string | null {
-  const domain = getCompanyDomain(ticker, name);
-  if (!domain) return null;
+  const brandId = getBrandfetchId(ticker, name);
+  if (!brandId) return null;
 
-  // Clearbit Logo API - free, no auth required
-  return `https://logo.clearbit.com/${domain}`;
+  // Brandfetch CDN URL format
+  return `https://cdn.brandfetch.io/${brandId}/w/400/h/400/theme/dark/icon.jpeg?c=1bxid64Mup7aczewSAYMX`;
+}
+
+// Stock Logo component with fallback
+function StockLogo({ ticker, name }: { ticker: string | null; name: string }) {
+  const [imageError, setImageError] = useState(false);
+  const logoUrl = getStockLogo(ticker, name);
+
+  const fallbackInitials = (ticker || name.substring(0, 2)).toUpperCase().substring(0, 2);
+
+  if (!logoUrl || imageError) {
+    return (
+      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+        {fallbackInitials}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={ticker || name}
+      className="w-8 h-8 rounded-md object-contain bg-white"
+      onError={() => setImageError(true)}
+    />
+  );
 }
 
 // Extract ticker symbol and shares from description (e.g., "GLD - 100 shares")
@@ -514,21 +543,7 @@ export function InvestmentsList({
                   onClick={() => toggleGroup(group.name.toLowerCase())}
                 >
                   <div className="flex items-center gap-3">
-                    {getStockLogo(group.ticker, group.name) ? (
-                      <img
-                        src={getStockLogo(group.ticker, group.name)!}
-                        alt={group.ticker || group.name}
-                        className="w-8 h-8 rounded-md object-contain bg-white"
-                        onError={(e) => {
-                          // Hide broken images
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                        {(group.ticker || group.name.substring(0, 2)).toUpperCase().substring(0, 2)}
-                      </div>
-                    )}
+                    <StockLogo ticker={group.ticker} name={group.name} />
                     <div className="flex flex-col">
                       <span className="font-medium">{group.name}</span>
                       <span className="text-sm text-muted-foreground">
