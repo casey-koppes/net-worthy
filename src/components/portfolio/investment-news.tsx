@@ -136,17 +136,12 @@ export function InvestmentNews({ tickers }: InvestmentNewsProps) {
                 <Newspaper className="h-12 w-12 text-muted-foreground/50" />
               </div>
             )}
-            {/* Ticker Badges Overlay */}
+            {/* Single Ticker Badge Overlay */}
             {item.tickers.length > 0 && (
-              <div className="absolute top-2 left-2 flex gap-1">
-                {item.tickers.slice(0, 3).map((ticker) => (
-                  <Badge
-                    key={ticker}
-                    className="bg-black/70 text-white hover:bg-black/80 text-xs"
-                  >
-                    {ticker}
-                  </Badge>
-                ))}
+              <div className="absolute top-2 left-2">
+                <Badge className="bg-black/70 text-white hover:bg-black/80 text-xs">
+                  {item.tickers[0]}
+                </Badge>
               </div>
             )}
           </div>
