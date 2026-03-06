@@ -13,19 +13,38 @@ function getPlaidEnv(): string {
   }
 }
 
-// Create Plaid client configuration
-const configuration = new Configuration({
-  basePath: getPlaidEnv(),
-  baseOptions: {
-    headers: {
-      "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
-      "PLAID-SECRET": process.env.PLAID_SECRET,
-    },
-  },
-});
+// Lazy initialization of Plaid client to ensure env vars are available
+let _plaidClient: PlaidApi | null = null;
 
-// Export Plaid API client
-export const plaidClient = new PlaidApi(configuration);
+function getPlaidClient(): PlaidApi {
+  if (!_plaidClient) {
+    const configuration = new Configuration({
+      basePath: getPlaidEnv(),
+      baseOptions: {
+        headers: {
+          "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
+          "PLAID-SECRET": process.env.PLAID_SECRET,
+        },
+      },
+    });
+    _plaidClient = new PlaidApi(configuration);
+  }
+  return _plaidClient;
+}
+
+// Export Plaid API client (lazy-loaded)
+export const plaidClient = {
+  linkTokenCreate: (...args: Parameters<PlaidApi["linkTokenCreate"]>) =>
+    getPlaidClient().linkTokenCreate(...args),
+  itemPublicTokenExchange: (...args: Parameters<PlaidApi["itemPublicTokenExchange"]>) =>
+    getPlaidClient().itemPublicTokenExchange(...args),
+  accountsGet: (...args: Parameters<PlaidApi["accountsGet"]>) =>
+    getPlaidClient().accountsGet(...args),
+  institutionsGetById: (...args: Parameters<PlaidApi["institutionsGetById"]>) =>
+    getPlaidClient().institutionsGetById(...args),
+  transactionsSync: (...args: Parameters<PlaidApi["transactionsSync"]>) =>
+    getPlaidClient().transactionsSync(...args),
+};
 
 // Export commonly used types and constants
 export { Products, CountryCode };
