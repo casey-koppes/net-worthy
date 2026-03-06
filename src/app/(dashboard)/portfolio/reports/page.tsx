@@ -37,6 +37,18 @@ interface HistoryStats {
   periodEnd: string | null;
 }
 
+interface PerformanceTotals {
+  currentNetWorth: number;
+  startNetWorth: number | null;
+  netWorthChange: number | null;
+  currentAssets: number;
+  startAssets: number | null;
+  assetsChange: number | null;
+  currentLiabilities: number;
+  startLiabilities: number | null;
+  liabilitiesChange: number | null;
+}
+
 const PERIODS = [
   { value: "7d", label: "7D" },
   { value: "30d", label: "30D" },
@@ -132,6 +144,7 @@ export default function ReportsPage() {
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [unitSnapshots, setUnitSnapshots] = useState<UnitSnapshot[]>([]);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+  const [performanceTotals, setPerformanceTotals] = useState<PerformanceTotals | null>(null);
 
   // Asset and liability breakdown state
   const [assetBreakdown, setAssetBreakdown] = useState<AssetBreakdown>({
@@ -263,11 +276,53 @@ export default function ReportsPage() {
     }
   }, [dbUserId]);
 
+  // Convert period to startDate for performance API
+  function getPerformanceStartDate(period: string): string {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case "7d":
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "30d":
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "90d":
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case "1y":
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      case "all":
+      default:
+        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000); // 5 years back
+    }
+
+    return startDate.toISOString().split("T")[0];
+  }
+
+  async function fetchPerformance() {
+    try {
+      const startDate = getPerformanceStartDate(period);
+      const res = await fetch(
+        `/api/portfolio/performance?userId=${dbUserId}&startDate=${startDate}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setPerformanceTotals(data.totals || null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch performance:", error);
+    }
+  }
+
   useEffect(() => {
     if (dbUserId) {
       fetchHistory();
       fetchAllPortfolioData();
       fetchUnitAssets();
+      fetchPerformance();
     }
   }, [dbUserId, period, fetchAllPortfolioData]);
 
@@ -356,7 +411,7 @@ export default function ReportsPage() {
             Track your net worth over time
           </p>
         </div>
-        <Button variant="outline" onClick={() => { fetchHistory(); fetchAllPortfolioData(); }}>
+        <Button variant="outline" onClick={() => { fetchHistory(); fetchAllPortfolioData(); fetchPerformance(); }}>
           Refresh
         </Button>
       </div>
@@ -379,14 +434,27 @@ export default function ReportsPage() {
               <CardDescription>Change ({period})</CardDescription>
             </CardHeader>
             <CardContent>
-              <p
-                className={`text-2xl font-bold ${
-                  stats.change >= 0 ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {stats.change >= 0 ? "+" : ""}
-                {formatCurrency(stats.change)}
-              </p>
+              {performanceTotals ? (
+                <p
+                  className={`text-2xl font-bold ${
+                    (performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)) >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)) >= 0 ? "+" : ""}
+                  {formatCurrency(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0))}
+                </p>
+              ) : (
+                <p
+                  className={`text-2xl font-bold ${
+                    stats.change >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {stats.change >= 0 ? "+" : ""}
+                  {formatCurrency(stats.change)}
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -394,14 +462,25 @@ export default function ReportsPage() {
               <CardDescription>Percent Change</CardDescription>
             </CardHeader>
             <CardContent>
-              <p
-                className={`text-2xl font-bold ${
-                  stats.changePercent >= 0 ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {stats.changePercent >= 0 ? "+" : ""}
-                {stats.changePercent.toFixed(2)}%
-              </p>
+              {performanceTotals?.netWorthChange !== null && performanceTotals?.netWorthChange !== undefined ? (
+                <p
+                  className={`text-2xl font-bold ${
+                    performanceTotals.netWorthChange >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {performanceTotals.netWorthChange >= 0 ? "+" : ""}
+                  {performanceTotals.netWorthChange.toFixed(2)}%
+                </p>
+              ) : (
+                <p
+                  className={`text-2xl font-bold ${
+                    stats.changePercent >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {stats.changePercent >= 0 ? "+" : ""}
+                  {stats.changePercent.toFixed(2)}%
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
