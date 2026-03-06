@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
+import { db, accounts, plaidConnections } from "@/lib/db";
+import { decryptNumber } from "@/lib/encryption";
+import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (useMockDb()) {
-      const accounts = mockDb.plaidAccounts.findByUserId(userId);
+      const mockAccounts = mockDb.plaidAccounts.findByUserId(userId);
       const connections = mockDb.plaidConnections.findByUserId(userId);
 
       // Create a map of connection IDs to institution info
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
       );
 
       // Add institution name and logo to each account
-      const accountsWithInstitution = accounts.map((account) => {
+      const accountsWithInstitution = mockAccounts.map((account) => {
         const institution = connectionMap.get(account.connectionId);
         return {
           ...account,
@@ -37,11 +40,51 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // For production with real database
-    return NextResponse.json(
-      { error: "Database not configured" },
-      { status: 500 }
-    );
+    // Use real database
+    const dbAccounts = await db.query.accounts.findMany({
+      where: eq(accounts.userId, userId),
+      with: {
+        connection: true,
+      },
+    });
+
+    // Decrypt balances and format response
+    const decryptedAccounts = dbAccounts.map((account) => {
+      const balance = decryptNumber(account.balanceEncrypted, userId);
+      const availableBalance = account.availableBalanceEncrypted
+        ? decryptNumber(account.availableBalanceEncrypted, userId)
+        : null;
+      const limit = account.limitEncrypted
+        ? decryptNumber(account.limitEncrypted, userId)
+        : null;
+
+      return {
+        id: account.id,
+        connectionId: account.connectionId,
+        plaidAccountId: account.plaidAccountId,
+        type: account.type,
+        subtype: account.subtype,
+        name: account.name,
+        officialName: account.officialName,
+        mask: account.mask,
+        balance,
+        availableBalance,
+        limit,
+        currency: account.currency,
+        category: account.category,
+        isAsset: account.isAsset,
+        isHidden: account.isHidden,
+        visibility: account.visibility,
+        lastSynced: account.lastSynced,
+        createdAt: account.createdAt,
+        institutionName: account.connection?.institutionName || "Unknown Institution",
+        institutionLogo: null, // We don't store logos in DB currently
+      };
+    });
+
+    return NextResponse.json({
+      accounts: decryptedAccounts,
+    });
   } catch (error) {
     console.error("Failed to fetch Plaid accounts:", error);
     return NextResponse.json(

@@ -42,6 +42,8 @@ export const plaidClient = {
     getPlaidClient().linkTokenCreate(...args),
   itemPublicTokenExchange: (...args: Parameters<PlaidApi["itemPublicTokenExchange"]>) =>
     getPlaidClient().itemPublicTokenExchange(...args),
+  itemGet: (...args: Parameters<PlaidApi["itemGet"]>) =>
+    getPlaidClient().itemGet(...args),
   accountsGet: (...args: Parameters<PlaidApi["accountsGet"]>) =>
     getPlaidClient().accountsGet(...args),
   institutionsGetById: (...args: Parameters<PlaidApi["institutionsGetById"]>) =>
