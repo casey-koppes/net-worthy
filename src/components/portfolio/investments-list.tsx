@@ -18,15 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { ChevronDown, ChevronUp, ExternalLink, FileBarChart } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, FileBarChart, X } from "lucide-react";
 import { InvestmentNews } from "./investment-news";
 import { InvestmentInsights } from "./investment-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -476,6 +468,7 @@ export function InvestmentsList({
   const [localRefresh, setLocalRefresh] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [groupActivities, setGroupActivities] = useState<Map<string, ActivityItem[]>>(new Map());
+  const [showReport, setShowReport] = useState(false);
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): number | null => {
@@ -632,84 +625,14 @@ export function InvestmentsList({
           <CardDescription>Track your investment portfolio</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm">
-                <FileBarChart className="h-4 w-4 mr-1" />
-                Report
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-[400px] sm:w-[540px]">
-              <SheetHeader>
-                <SheetTitle>Investment Allocation</SheetTitle>
-                <SheetDescription>
-                  Breakdown of your investment portfolio
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-6">
-                <div className="h-[300px] w-full">
-                  <svg viewBox="0 0 400 300" className="w-full h-full">
-                    {(() => {
-                      const total = pieChartData.reduce((sum, d) => sum + d.value, 0);
-                      let currentAngle = -90;
-                      const centerX = 150;
-                      const centerY = 150;
-                      const radius = 100;
-
-                      return pieChartData.map((slice, i) => {
-                        const percentage = (slice.value / total) * 100;
-                        const angle = (percentage / 100) * 360;
-                        const startAngle = currentAngle;
-                        const endAngle = currentAngle + angle;
-                        currentAngle = endAngle;
-
-                        const startRad = (startAngle * Math.PI) / 180;
-                        const endRad = (endAngle * Math.PI) / 180;
-
-                        const x1 = centerX + radius * Math.cos(startRad);
-                        const y1 = centerY + radius * Math.sin(startRad);
-                        const x2 = centerX + radius * Math.cos(endRad);
-                        const y2 = centerY + radius * Math.sin(endRad);
-
-                        const largeArc = angle > 180 ? 1 : 0;
-
-                        const pathD = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
-
-                        return (
-                          <path
-                            key={i}
-                            d={pathD}
-                            fill={slice.fill}
-                            stroke="white"
-                            strokeWidth="2"
-                          />
-                        );
-                      });
-                    })()}
-                  </svg>
-                </div>
-                <div className="mt-4 space-y-2">
-                  {pieChartData.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: item.fill }}
-                        />
-                        <span>{item.name}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-muted-foreground">
-                          {((item.value / total) * 100).toFixed(1)}%
-                        </span>
-                        <span className="font-medium">{formatCurrency(item.value)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          <Button
+            variant={showReport ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowReport(!showReport)}
+          >
+            <FileBarChart className="h-4 w-4 mr-1" />
+            Report
+          </Button>
           <Button variant="outline" size="sm" onClick={onAddInvestment}>
             Add Investment
           </Button>
@@ -719,6 +642,9 @@ export function InvestmentsList({
         </div>
       </CardHeader>
       <CardContent>
+        <div className={`flex gap-4 ${showReport ? "flex-col lg:flex-row" : ""}`}>
+          {/* Main Content */}
+          <div className={showReport ? "flex-1 lg:w-2/3" : "w-full"}>
         <Tabs defaultValue="investments" className="w-full">
           {/* Chrome-style tabs */}
           <div className="border-b">
@@ -912,6 +838,85 @@ export function InvestmentsList({
             />
           </TabsContent>
         </Tabs>
+          </div>
+
+          {/* Report Panel - Pie Chart */}
+          {showReport && (
+            <div className="lg:w-1/3 border rounded-lg p-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold">Investment Allocation</h4>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowReport(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="h-[250px] w-full">
+                <svg viewBox="0 0 300 250" className="w-full h-full">
+                  {(() => {
+                    const chartTotal = pieChartData.reduce((sum, d) => sum + d.value, 0);
+                    let currentAngle = -90;
+                    const centerX = 150;
+                    const centerY = 125;
+                    const radius = 90;
+
+                    return pieChartData.map((slice, i) => {
+                      const percentage = (slice.value / chartTotal) * 100;
+                      const angle = (percentage / 100) * 360;
+                      const startAngle = currentAngle;
+                      const endAngle = currentAngle + angle;
+                      currentAngle = endAngle;
+
+                      const startRad = (startAngle * Math.PI) / 180;
+                      const endRad = (endAngle * Math.PI) / 180;
+
+                      const x1 = centerX + radius * Math.cos(startRad);
+                      const y1 = centerY + radius * Math.sin(startRad);
+                      const x2 = centerX + radius * Math.cos(endRad);
+                      const y2 = centerY + radius * Math.sin(endRad);
+
+                      const largeArc = angle > 180 ? 1 : 0;
+
+                      const pathD = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+                      return (
+                        <path
+                          key={i}
+                          d={pathD}
+                          fill={slice.fill}
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+              </div>
+              <div className="space-y-2 mt-2">
+                {pieChartData.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <span className="truncate">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-muted-foreground text-xs">
+                        {((item.value / total) * 100).toFixed(1)}%
+                      </span>
+                      <span className="font-medium text-xs">{formatCurrency(item.value)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
 
       {/* Edit Dialog */}
