@@ -12,9 +12,11 @@ interface PerformanceBadgeProps {
 
 /**
  * Displays a performance percentage with up/down indicator
- * - Positive: green text with 🔺 (up triangle)
- * - Negative: red text with 🔻 (down triangle)
+ * - Positive: green text with ▲ (up triangle)
+ * - Negative: red text with ▼ (down triangle)
  * - Zero/null: muted text, no icon
+ *
+ * Format: "11%▲" for positive, "5%▼" for negative
  */
 export function PerformanceBadge({
   value,
@@ -34,10 +36,9 @@ export function PerformanceBadge({
 
   const isPositive = value > 0;
   const isNegative = value < 0;
-  const isZero = value === 0;
 
-  // Round to whole number
-  const displayValue = Math.round(Math.abs(value));
+  // Round to one decimal place for more precision, remove trailing .0
+  const displayValue = Math.abs(value).toFixed(1).replace(/\.0$/, "");
 
   // Determine colors and icons
   const colorClass = isPositive
@@ -46,22 +47,20 @@ export function PerformanceBadge({
       ? "text-red-600"
       : "text-muted-foreground";
 
-  const icon = isPositive ? "🔺" : isNegative ? "🔻" : "";
-  const sign = isPositive ? "+" : isNegative ? "-" : "";
+  // Use proper triangle symbols as user requested
+  const icon = isPositive ? "▲" : isNegative ? "▼" : "";
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 font-medium",
+        "inline-flex items-center font-medium whitespace-nowrap",
         colorClass,
         size === "sm" ? "text-xs" : "text-sm",
         className
       )}
     >
-      {showIcon && icon && <span className="text-[0.7em]">{icon}</span>}
-      <span>
-        {sign}{displayValue}%
-      </span>
+      <span>{displayValue}%</span>
+      {showIcon && icon && <span>{icon}</span>}
       {periodLabel && (
         <span className="text-muted-foreground font-normal ml-1">
           ({periodLabel})

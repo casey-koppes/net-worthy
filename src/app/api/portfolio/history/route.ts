@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, portfolioSnapshots } from "@/lib/db";
+import {
+  db,
+  portfolioSnapshots,
+  itemValueSnapshots,
+  manualAssets,
+  cryptoWallets,
+  accounts,
+} from "@/lib/db";
 import { eq, desc, gte, and } from "drizzle-orm";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
+import { encryptNumber, decryptNumber } from "@/lib/encryption";
 
 // Helper to calculate date range
 function getStartDate(period: string): string | null {
@@ -178,26 +186,143 @@ export async function POST(request: NextRequest) {
           breakdown,
         })
         .where(eq(portfolioSnapshots.id, existingSnapshot.id));
-
-      return NextResponse.json({ success: true, updated: true });
+    } else {
+      // Create new snapshot
+      await db.insert(portfolioSnapshots).values({
+        userId,
+        date: today,
+        totalAssets: totalAssets.toString(),
+        totalLiabilities: totalLiabilities.toString(),
+        netWorth: netWorth.toString(),
+        breakdown,
+      });
     }
 
-    // Create new snapshot
-    await db.insert(portfolioSnapshots).values({
-      userId,
-      date: today,
-      totalAssets: totalAssets.toString(),
-      totalLiabilities: totalLiabilities.toString(),
-      netWorth: netWorth.toString(),
-      breakdown,
-    });
+    // Save item-level snapshots
+    await saveItemSnapshots(userId, today);
 
-    return NextResponse.json({ success: true, created: true });
+    return NextResponse.json({
+      success: true,
+      updated: !!existingSnapshot,
+      created: !existingSnapshot,
+    });
   } catch (error) {
     console.error("Failed to create portfolio snapshot:", error);
     return NextResponse.json(
       { error: "Failed to create snapshot" },
       { status: 500 }
     );
+  }
+}
+
+// Save individual item snapshots for performance tracking
+async function saveItemSnapshots(userId: string, date: string) {
+  try {
+    // Fetch all portfolio items
+    const [dbManualAssets, dbCryptoWallets, dbAccounts] = await Promise.all([
+      db.query.manualAssets.findMany({
+        where: eq(manualAssets.userId, userId),
+      }),
+      db.query.cryptoWallets.findMany({
+        where: eq(cryptoWallets.userId, userId),
+      }),
+      db.query.accounts.findMany({
+        where: eq(accounts.userId, userId),
+      }),
+    ]);
+
+    // Delete existing item snapshots for today (upsert approach)
+    await db
+      .delete(itemValueSnapshots)
+      .where(
+        and(
+          eq(itemValueSnapshots.userId, userId),
+          eq(itemValueSnapshots.date, date)
+        )
+      );
+
+    const itemSnapshots: Array<{
+      userId: string;
+      date: string;
+      itemId: string;
+      itemType: string;
+      category: string;
+      name: string;
+      valueEncrypted: string;
+      isAsset: boolean;
+      metadata: Record<string, unknown> | null;
+    }> = [];
+
+    // Process manual assets
+    for (const asset of dbManualAssets) {
+      const value = decryptNumber(asset.valueEncrypted, userId);
+      itemSnapshots.push({
+        userId,
+        date,
+        itemId: asset.id,
+        itemType: "manual_asset",
+        category: asset.category,
+        name: asset.name,
+        valueEncrypted: encryptNumber(value, userId),
+        isAsset: asset.isAsset,
+        metadata: asset.metadata as Record<string, unknown> | null,
+      });
+    }
+
+    // Process crypto wallets
+    for (const wallet of dbCryptoWallets) {
+      const balanceUsd = wallet.balanceUsdEncrypted
+        ? decryptNumber(wallet.balanceUsdEncrypted, userId)
+        : 0;
+      const balance = wallet.balanceEncrypted
+        ? decryptNumber(wallet.balanceEncrypted, userId)
+        : 0;
+
+      itemSnapshots.push({
+        userId,
+        date,
+        itemId: wallet.id,
+        itemType: "crypto_wallet",
+        category: "crypto",
+        name: `${wallet.chain} - ${wallet.label || wallet.address.slice(0, 8)}`,
+        valueEncrypted: encryptNumber(balanceUsd, userId),
+        isAsset: true,
+        metadata: {
+          chain: wallet.chain,
+          address: wallet.address,
+          balance,
+          balanceUsd,
+        },
+      });
+    }
+
+    // Process Plaid accounts
+    for (const account of dbAccounts) {
+      const balance = decryptNumber(account.balanceEncrypted, userId);
+      itemSnapshots.push({
+        userId,
+        date,
+        itemId: account.id,
+        itemType: "plaid_account",
+        category: account.category,
+        name: account.name,
+        valueEncrypted: encryptNumber(balance, userId),
+        isAsset: account.isAsset,
+        metadata: {
+          type: account.type,
+          subtype: account.subtype,
+        },
+      });
+    }
+
+    // Insert all item snapshots
+    if (itemSnapshots.length > 0) {
+      await db.insert(itemValueSnapshots).values(itemSnapshots);
+    }
+
+    console.log(`Saved ${itemSnapshots.length} item snapshots for user ${userId}`);
+  } catch (error) {
+    console.error("Failed to save item snapshots:", error);
+    // Don't throw - this is a non-critical operation
   }
 }

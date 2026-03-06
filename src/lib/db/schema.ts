@@ -158,6 +158,23 @@ export const portfolioSnapshots = pgTable("portfolio_snapshots", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Item-level value snapshots for performance tracking
+export const itemValueSnapshots = pgTable("item_value_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  date: date("date").notNull(),
+  itemId: uuid("item_id").notNull(), // ID of the asset/liability
+  itemType: text("item_type").notNull(), // 'manual_asset', 'crypto_wallet', 'plaid_account'
+  category: text("category").notNull(), // bank, investment, crypto, etc.
+  name: text("name").notNull(),
+  valueEncrypted: text("value_encrypted").notNull(), // encrypted value at snapshot time
+  isAsset: boolean("is_asset").default(true).notNull(),
+  metadata: jsonb("metadata"), // ticker, shares, chain, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Privacy settings
 export const privacySettings = pgTable("privacy_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -232,6 +249,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   cryptoWallets: many(cryptoWallets),
   manualAssets: many(manualAssets),
   portfolioSnapshots: many(portfolioSnapshots),
+  itemValueSnapshots: many(itemValueSnapshots),
   privacySettings: one(privacySettings),
   activityLog: many(activityLog),
   followers: many(follows, { relationName: "following" }),
@@ -288,6 +306,16 @@ export const portfolioSnapshotsRelations = relations(
   ({ one }) => ({
     user: one(users, {
       fields: [portfolioSnapshots.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const itemValueSnapshotsRelations = relations(
+  itemValueSnapshots,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [itemValueSnapshots.userId],
       references: [users.id],
     }),
   })
