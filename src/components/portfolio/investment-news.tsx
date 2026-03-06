@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ExternalLink, Newspaper } from "lucide-react";
 
 interface NewsItem {
@@ -70,14 +71,15 @@ export function InvestmentNews({ tickers }: InvestmentNewsProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 py-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse flex gap-3">
-            <div className="h-16 w-16 bg-muted rounded-md shrink-0" />
-            <div className="flex-1 space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="animate-pulse rounded-lg border overflow-hidden">
+            <div className="h-40 bg-muted" />
+            <div className="p-4 space-y-3">
               <div className="h-4 bg-muted rounded w-3/4" />
               <div className="h-3 bg-muted rounded w-full" />
-              <div className="h-3 bg-muted rounded w-1/4" />
+              <div className="h-3 bg-muted rounded w-1/2" />
+              <div className="h-8 bg-muted rounded w-24 mt-2" />
             </div>
           </div>
         ))}
@@ -89,12 +91,9 @@ export function InvestmentNews({ tickers }: InvestmentNewsProps) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <p>{error}</p>
-        <button
-          onClick={fetchNews}
-          className="text-sm text-primary hover:underline mt-2"
-        >
+        <Button variant="outline" size="sm" onClick={fetchNews} className="mt-2">
           Try again
-        </button>
+        </Button>
       </div>
     );
   }
@@ -118,59 +117,74 @@ export function InvestmentNews({ tickers }: InvestmentNewsProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {news.map((item) => (
-        <a
+        <div
           key={item.id}
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors group"
+          className="rounded-lg border overflow-hidden bg-card hover:shadow-md transition-shadow"
         >
-          {item.imageUrl ? (
-            <img
-              src={item.imageUrl}
-              alt=""
-              className="h-16 w-16 rounded-md object-cover shrink-0"
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center shrink-0">
-              <Newspaper className="h-6 w-6 text-muted-foreground" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+          {/* Image Section */}
+          <div className="relative h-40 bg-muted">
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                <Newspaper className="h-12 w-12 text-muted-foreground/50" />
+              </div>
+            )}
+            {/* Ticker Badges Overlay */}
+            {item.tickers.length > 0 && (
+              <div className="absolute top-2 left-2 flex gap-1">
+                {item.tickers.slice(0, 3).map((ticker) => (
+                  <Badge
+                    key={ticker}
+                    className="bg-black/70 text-white hover:bg-black/80 text-xs"
+                  >
+                    {ticker}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Content Section */}
+          <div className="p-4">
+            <h4 className="font-semibold text-sm line-clamp-2 mb-2">
               {item.title}
-              <ExternalLink className="inline-block h-3 w-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
             </h4>
-            <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
               {item.summary}
             </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-muted-foreground">{item.source}</span>
-              <span className="text-xs text-muted-foreground">·</span>
-              <span className="text-xs text-muted-foreground">
-                {formatTimeAgo(item.publishedAt)}
-              </span>
-              {item.tickers.length > 0 && (
-                <>
-                  <span className="text-xs text-muted-foreground">·</span>
-                  <div className="flex gap-1">
-                    {item.tickers.slice(0, 3).map((ticker) => (
-                      <Badge
-                        key={ticker}
-                        variant="secondary"
-                        className="text-[10px] px-1 py-0"
-                      >
-                        {ticker}
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              )}
+
+            {/* Meta Info */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+              <span className="font-medium">{item.source}</span>
+              <span>·</span>
+              <span>{formatTimeAgo(item.publishedAt)}</span>
             </div>
+
+            {/* View Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              asChild
+            >
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                View Article
+              </a>
+            </Button>
           </div>
-        </a>
+        </div>
       ))}
     </div>
   );

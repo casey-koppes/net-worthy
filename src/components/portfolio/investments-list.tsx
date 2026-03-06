@@ -720,13 +720,29 @@ export function InvestmentsList({
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="investments" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="investments">
-              {uniqueCount} investments - {formatCurrency(total)}
-            </TabsTrigger>
-            <TabsTrigger value="news">News</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
-          </TabsList>
+          {/* Chrome-style tabs */}
+          <div className="border-b">
+            <TabsList className="h-auto p-0 bg-transparent gap-0">
+              <TabsTrigger
+                value="investments"
+                className="relative rounded-none rounded-t-lg border border-b-0 border-transparent data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-none px-4 py-2 text-sm font-medium data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground data-[state=active]:z-10 -mb-px"
+              >
+                {uniqueCount} investments - {formatCurrency(total)}
+              </TabsTrigger>
+              <TabsTrigger
+                value="news"
+                className="relative rounded-none rounded-t-lg border border-b-0 border-transparent data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-none px-4 py-2 text-sm font-medium data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground data-[state=active]:z-10 -mb-px -ml-px"
+              >
+                News
+              </TabsTrigger>
+              <TabsTrigger
+                value="insights"
+                className="relative rounded-none rounded-t-lg border border-b-0 border-transparent data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-none px-4 py-2 text-sm font-medium data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground data-[state=active]:z-10 -mb-px -ml-px"
+              >
+                Insights
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="investments" className="mt-4">
         <div className="space-y-2">
