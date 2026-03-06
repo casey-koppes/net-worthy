@@ -21,6 +21,7 @@ interface AddAssetFormProps {
 
 const ASSET_CATEGORIES = [
   { value: "vehicle", label: "Vehicle" },
+  { value: "motorcycle", label: "Motorcycle" },
   { value: "real_estate", label: "Real Estate" },
   { value: "other", label: "Other" },
 ];

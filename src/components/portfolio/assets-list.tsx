@@ -56,12 +56,14 @@ interface GroupedAsset {
 
 const categoryLabels: Record<string, string> = {
   vehicle: "Vehicle",
+  motorcycle: "Motorcycle",
   real_estate: "Real Estate",
   other: "Other",
 };
 
 const categoryIcons: Record<string, string> = {
   vehicle: "🚘",
+  motorcycle: "🏍️",
   real_estate: "🏠",
   other: "📦",
 };
@@ -79,6 +81,8 @@ function getCategoryColor(category: string): string {
   switch (category) {
     case "vehicle":
       return "bg-orange-100 text-orange-800";
+    case "motorcycle":
+      return "bg-blue-100 text-blue-800";
     case "real_estate":
       return "bg-purple-100 text-purple-800";
     case "other":
@@ -222,7 +226,7 @@ export function AssetsList({
         const assetItems = data.assets.filter(
           (asset: Asset) =>
             asset.isAsset &&
-            ["vehicle", "real_estate", "other"].includes(asset.category)
+            ["vehicle", "motorcycle", "real_estate", "other"].includes(asset.category)
         );
         setAssets(assetItems);
 

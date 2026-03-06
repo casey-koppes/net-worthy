@@ -46,6 +46,7 @@ const ASSET_CATEGORIES = [
   { value: "bank", label: "Bank Account" },
   { value: "investment", label: "Investment" },
   { value: "vehicle", label: "Vehicle" },
+  { value: "motorcycle", label: "Motorcycle" },
   { value: "real_estate", label: "Real Estate" },
   { value: "other", label: "Other" },
 ];

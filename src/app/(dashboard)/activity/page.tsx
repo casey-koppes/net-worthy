@@ -59,38 +59,61 @@ function getActionColor(action: string): string {
   return "bg-blue-100 text-blue-800";
 }
 
-function formatAction(action: string, metadata: Record<string, unknown> | null): string {
+function getItemName(action: string, metadata: Record<string, unknown> | null): string {
   const name = metadata?.name || metadata?.institutionName || "";
+  const accountsCount = metadata?.accountsCount as number | undefined;
 
   switch (action) {
     case "account_added":
-      return `Connected ${name || "a new account"}`;
     case "account_removed":
-      return `Disconnected ${name || "an account"}`;
+      return name || "Account";
     case "plaid_connected":
-      return `Connected ${name || "a financial institution"}${metadata?.accountsCount ? ` (${metadata.accountsCount} accounts)` : ""}`;
     case "plaid_disconnected":
-      return `Disconnected ${name || "a financial institution"}${metadata?.accountsCount ? ` (${metadata.accountsCount} accounts)` : ""}`;
+      return `${name || "Financial Institution"}${accountsCount ? ` (${accountsCount} accounts)` : ""}`;
     case "balance_changed":
-      return `Balance updated for ${name || "an account"}`;
+      return name || "Account";
     case "wallet_added":
-      return `Added ${metadata?.chain || "crypto"} wallet${name ? `: ${name}` : ""}`;
     case "wallet_removed":
-      return `Removed ${metadata?.chain || "crypto"} wallet`;
+      const chain = (metadata?.chain as string)?.toUpperCase() || "Crypto";
+      return name ? `${name} (${chain})` : `${chain} Wallet`;
     case "asset_added":
-      return `Added ${name || "a manual asset"}`;
     case "asset_removed":
-      return `Removed ${name || "a manual asset"}`;
+      return name || "Asset";
     case "settings_changed":
-      return "Updated privacy settings";
+      return "Privacy Settings";
     case "follow_added":
-      return `Started following ${name || "a user"}`;
     case "follow_removed":
-      return `Unfollowed ${name || "a user"}`;
+      return name || "User";
     case "login":
-      return "Logged in";
+      return "Session";
     case "portfolio_synced":
-      return "Synced portfolio data";
+      return "Portfolio";
+    default:
+      return name || "Item";
+  }
+}
+
+function getActionLabel(action: string): string {
+  switch (action) {
+    case "account_added":
+    case "plaid_connected":
+    case "wallet_added":
+    case "asset_added":
+    case "follow_added":
+      return "Added";
+    case "account_removed":
+    case "plaid_disconnected":
+    case "wallet_removed":
+    case "asset_removed":
+    case "follow_removed":
+      return "Removed";
+    case "balance_changed":
+    case "settings_changed":
+      return "Updated";
+    case "login":
+      return "Login";
+    case "portfolio_synced":
+      return "Synced";
     default:
       return action.replace(/_/g, " ");
   }
@@ -242,27 +265,27 @@ export default function ActivityPage() {
                       const valueChange = getValueChangeDisplay(
                         activity.metadata as Record<string, unknown>
                       );
+                      const itemName = getItemName(
+                        activity.action,
+                        activity.metadata as Record<string, unknown>
+                      );
+                      const actionLabel = getActionLabel(activity.action);
                       return (
                         <div
                           key={activity.id}
                           className="flex items-center gap-4 rounded-lg border p-3"
                         >
                           <Badge
-                            className={`h-10 w-10 flex items-center justify-center text-lg ${getActionColor(
+                            className={`shrink-0 h-10 w-10 flex items-center justify-center text-lg ${getActionColor(
                               activity.action
                             )}`}
                           >
                             {getActionIcon(activity.action)}
                           </Badge>
                           <div className="flex-1">
-                            <p className="font-medium">
-                              {formatAction(
-                                activity.action,
-                                activity.metadata as Record<string, unknown>
-                              )}
-                            </p>
+                            <p className="font-medium">{itemName}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatTimeAgo(activity.createdAt)}
+                              {actionLabel} · {formatTimeAgo(activity.createdAt)}
                             </p>
                           </div>
                           {valueChange && (
