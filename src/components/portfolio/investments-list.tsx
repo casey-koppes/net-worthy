@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, ExternalLink, FileBarChart, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, PieChart, X } from "lucide-react";
 import { InvestmentNews } from "./investment-news";
 import { InvestmentInsights } from "./investment-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -627,11 +627,11 @@ export function InvestmentsList({
         <div className="flex gap-2">
           <Button
             variant={showReport ? "default" : "outline"}
-            size="sm"
+            size="icon"
             onClick={() => setShowReport(!showReport)}
+            title="View allocation report"
           >
-            <FileBarChart className="h-4 w-4 mr-1" />
-            Report
+            <PieChart className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={onAddInvestment}>
             Add Investment
