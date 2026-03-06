@@ -1,0 +1,1 @@
+ALTER TYPE "public"."asset_category" ADD VALUE 'motorcycle' BEFORE 'other';

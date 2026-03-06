@@ -15,6 +15,13 @@
       "when": 1772765719399,
       "tag": "0001_tan_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772775201413,
+      "tag": "0002_opposite_silver_samurai",
+      "breakpoints": true
     }
   ]
 }
