@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -9,10 +10,53 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
+interface PlaidConnection {
+  id: string;
+  institutionName: string;
+  status: "active" | "error" | "pending_reauth";
+  accountCount: number;
+}
+
 export default function SettingsPage() {
-  const { profile, pubkey } = useAuthStore();
+  const { profile, pubkey, dbUserId } = useAuthStore();
+  const [plaidConnections, setPlaidConnections] = useState<PlaidConnection[]>([]);
+  const [isLoadingConnections, setIsLoadingConnections] = useState(true);
+
+  useEffect(() => {
+    if (dbUserId) {
+      fetchConnections();
+    }
+  }, [dbUserId]);
+
+  async function fetchConnections() {
+    try {
+      const res = await fetch(`/api/plaid/connections?userId=${dbUserId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlaidConnections(data.connections || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch connections:", error);
+    } finally {
+      setIsLoadingConnections(false);
+    }
+  }
+
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
+      case "error":
+        return <Badge variant="destructive">Error</Badge>;
+      case "pending_reauth":
+        return <Badge className="bg-yellow-100 text-yellow-800">Needs Reauth</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -53,7 +97,33 @@ export default function SettingsPage() {
             <CardTitle>Integrations</CardTitle>
             <CardDescription>Manage connected accounts</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {isLoadingConnections ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-10 bg-muted rounded" />
+              </div>
+            ) : plaidConnections.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No bank accounts connected yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {plaidConnections.map((connection) => (
+                  <div
+                    key={connection.id}
+                    className="flex items-center justify-between rounded-md border p-2 text-sm"
+                  >
+                    <div>
+                      <p className="font-medium">{connection.institutionName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {connection.accountCount} account{connection.accountCount !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    {getStatusBadge(connection.status)}
+                  </div>
+                ))}
+              </div>
+            )}
             <Button asChild>
               <Link href="/settings/integrations">Manage Integrations</Link>
             </Button>
