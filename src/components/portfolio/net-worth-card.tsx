@@ -120,8 +120,13 @@ export function NetWorthCard({
             <p className="text-4xl font-bold tracking-tight">
               {formatCurrency(netWorth)}
             </p>
-            {!isLoadingPerformance && (
-              <PerformanceBadge value={performance?.totals.netWorthChange} />
+            {!isLoadingPerformance && performance?.totals && (
+              <PerformanceBadge
+                value={performance.totals.netWorthChange}
+                dollarChange={
+                  performance.totals.currentNetWorth - (performance.totals.startNetWorth ?? 0)
+                }
+              />
             )}
             {isLoadingPerformance && (
               <span className="text-sm text-muted-foreground animate-pulse">
@@ -137,9 +142,12 @@ export function NetWorthCard({
                 <p className="text-xl font-semibold text-green-600">
                   {formatCurrency(totalAssets)}
                 </p>
-                {!isLoadingPerformance && (
+                {!isLoadingPerformance && performance?.totals && (
                   <PerformanceBadge
-                    value={performance?.totals.assetsChange}
+                    value={performance.totals.assetsChange}
+                    dollarChange={
+                      performance.totals.currentAssets - (performance.totals.startAssets ?? 0)
+                    }
                     size="sm"
                   />
                 )}
@@ -151,9 +159,12 @@ export function NetWorthCard({
                 <p className="text-xl font-semibold text-red-600">
                   {formatCurrency(totalLiabilities)}
                 </p>
-                {!isLoadingPerformance && (
+                {!isLoadingPerformance && performance?.totals && (
                   <PerformanceBadge
-                    value={performance?.totals.liabilitiesChange}
+                    value={performance.totals.liabilitiesChange}
+                    dollarChange={
+                      performance.totals.currentLiabilities - (performance.totals.startLiabilities ?? 0)
+                    }
                     size="sm"
                   />
                 )}

@@ -150,8 +150,11 @@ export function ManualAssetsList({
   const [groupActivities, setGroupActivities] = useState<Map<string, ActivityItem[]>>(new Map());
 
   // Helper to get performance for an item
-  const getItemPerformance = (itemId: string): number | null => {
-    return performance?.items.find((i) => i.id === itemId)?.changePercent ?? null;
+  const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
+    const item = performance?.items.find((i) => i.id === itemId);
+    if (!item) return { percent: null, dollarChange: null };
+    const dollarChange = item.startValue !== null ? item.currentValue - item.startValue : null;
+    return { percent: item.changePercent, dollarChange };
   };
 
   const handleEditSuccess = () => {
@@ -285,7 +288,8 @@ export function ManualAssetsList({
                         )}
                       </div>
                       <PerformanceBadge
-                        value={getItemPerformance(group.items[0]?.id)}
+                        value={getItemPerformance(group.items[0]?.id).percent}
+                        dollarChange={getItemPerformance(group.items[0]?.id).dollarChange}
                         size="sm"
                       />
                       {isExpanded ? (

@@ -24,6 +24,32 @@ interface PortfolioInsights {
 const insightsCache = new Map<string, { data: PortfolioInsights; timestamp: number }>();
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
+// Mock insights for when API is unavailable
+function getMockInsights(): PortfolioInsights {
+  return {
+    grade: "B+",
+    gradeDescription: "Good portfolio with room for improvement",
+    summary: "Your portfolio shows a solid foundation with a mix of growth and value stocks. Consider adding more diversification across sectors.",
+    strengths: [
+      "Strong presence in technology sector",
+      "Mix of large-cap and growth stocks",
+      "Good liquidity in holdings",
+    ],
+    weaknesses: [
+      "Concentration risk in single sector",
+      "Limited international exposure",
+      "No fixed income allocation",
+    ],
+    recommendations: [
+      "Consider adding international ETFs for global diversification",
+      "Add some bond exposure to reduce overall volatility",
+      "Look into dividend-paying stocks for income generation",
+    ],
+    diversificationScore: 65,
+    riskLevel: "Medium",
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { holdings, totalValue, userId } = await request.json();
@@ -47,30 +73,7 @@ export async function POST(request: NextRequest) {
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!anthropicApiKey) {
-      // Return mock insights if no API key
-      const mockInsights: PortfolioInsights = {
-        grade: "B+",
-        gradeDescription: "Good portfolio with room for improvement",
-        summary: "Your portfolio shows a solid foundation with a mix of growth and value stocks. Consider adding more diversification across sectors.",
-        strengths: [
-          "Strong presence in technology sector",
-          "Mix of large-cap and growth stocks",
-          "Good liquidity in holdings",
-        ],
-        weaknesses: [
-          "Concentration risk in single sector",
-          "Limited international exposure",
-          "No fixed income allocation",
-        ],
-        recommendations: [
-          "Consider adding international ETFs for global diversification",
-          "Add some bond exposure to reduce overall volatility",
-          "Look into dividend-paying stocks for income generation",
-        ],
-        diversificationScore: 65,
-        riskLevel: "Medium",
-      };
-      return NextResponse.json({ insights: mockInsights, mock: true });
+      return NextResponse.json({ insights: getMockInsights(), mock: true });
     }
 
     // Build prompt for Claude
@@ -113,7 +116,7 @@ Respond ONLY with the JSON object, no other text.`;
     });
 
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       messages: [
         {
@@ -135,9 +138,7 @@ Respond ONLY with the JSON object, no other text.`;
     return NextResponse.json({ insights });
   } catch (error) {
     console.error("Failed to generate portfolio insights:", error);
-    return NextResponse.json(
-      { error: "Failed to generate insights" },
-      { status: 500 }
-    );
+    // Fallback to mock insights on any error (billing, network, etc.)
+    return NextResponse.json({ insights: getMockInsights(), mock: true });
   }
 }

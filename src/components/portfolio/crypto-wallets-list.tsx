@@ -205,8 +205,11 @@ export function CryptoWalletsList({
   const [groupActivities, setGroupActivities] = useState<Map<string, ActivityItem[]>>(new Map());
 
   // Helper to get performance for an item
-  const getItemPerformance = (itemId: string): number | null => {
-    return performance?.items.find((i) => i.id === itemId)?.changePercent ?? null;
+  const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
+    const item = performance?.items.find((i) => i.id === itemId);
+    if (!item) return { percent: null, dollarChange: null };
+    const dollarChange = item.startValue !== null ? item.currentValue - item.startValue : null;
+    return { percent: item.changePercent, dollarChange };
   };
 
   const handleEditSuccess = () => {
@@ -370,11 +373,12 @@ export function CryptoWalletsList({
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-semibold text-green-600">
+                    <span className="font-semibold">
                       {formatCurrency(group.totalBalanceUsd)}
                     </span>
                     <PerformanceBadge
-                      value={getItemPerformance(group.wallets[0]?.id)}
+                      value={getItemPerformance(group.wallets[0]?.id).percent}
+                      dollarChange={getItemPerformance(group.wallets[0]?.id).dollarChange}
                       size="sm"
                     />
                     {isExpanded ? (
@@ -418,7 +422,7 @@ export function CryptoWalletsList({
                               </span>
                             </div>
                             <div className="text-right">
-                              <span className="font-medium text-green-600">
+                              <span className="font-medium">
                                 {formatCurrency(wallet.balanceUsd)}
                               </span>
                               <p className="text-xs text-muted-foreground">

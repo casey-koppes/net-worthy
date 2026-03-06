@@ -95,7 +95,7 @@ Guidelines:
     });
 
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: systemPrompt,
       messages: [
@@ -109,9 +109,10 @@ Guidelines:
     return NextResponse.json({ answer: responseText });
   } catch (error) {
     console.error("Failed to process portfolio question:", error);
-    return NextResponse.json(
-      { error: "Failed to process question" },
-      { status: 500 }
-    );
+    // Fallback to a helpful message on any error
+    return NextResponse.json({
+      answer: "I'm currently unable to process questions due to a service limitation. The AI chat feature requires an active Anthropic API subscription. In the meantime, you can review the portfolio insights shown above for guidance on your investments.",
+      mock: true,
+    });
   }
 }

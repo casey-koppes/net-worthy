@@ -12,11 +12,71 @@ import { mockDb, useMockDb } from "@/lib/db/mock-db";
 import { calculatePerformance } from "@/lib/utils/period-utils";
 import { decryptNumber } from "@/lib/encryption";
 
+/**
+ * Fetch historical stock price for a given ticker and date
+ */
+async function fetchHistoricalPrice(
+  ticker: string,
+  date: string
+): Promise<number | null> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const response = await fetch(
+      `${baseUrl}/api/stocks/historical?ticker=${encodeURIComponent(ticker)}&date=${date}`
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.price ?? null;
+  } catch (error) {
+    console.error(`Failed to fetch historical price for ${ticker}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Fetch current stock price for a given ticker
+ */
+async function fetchCurrentPrice(ticker: string): Promise<number | null> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const response = await fetch(
+      `${baseUrl}/api/stocks/quote?ticker=${encodeURIComponent(ticker)}`
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.price ?? null;
+  } catch (error) {
+    console.error(`Failed to fetch current price for ${ticker}:`, error);
+    return null;
+  }
+}
+
 interface AssetMetadata {
   ticker?: string;
   shares?: number;
   pricePerShare?: number;
   investmentType?: string;
+}
+
+/**
+ * Extract ticker and shares from description (e.g., "TWLO - 340 shares")
+ */
+function parseDescription(description: string | null): { ticker: string | null; shares: number } {
+  if (!description) return { ticker: null, shares: 0 };
+
+  const match = description.match(/^([A-Z]+)\s*-\s*(\d+(?:\.\d+)?)\s*shares?/i);
+  if (match) {
+    return { ticker: match[1].toUpperCase(), shares: parseFloat(match[2]) };
+  }
+  return { ticker: null, shares: 0 };
 }
 
 interface PerformanceItem {
@@ -99,43 +159,104 @@ async function calculateRealPerformance(userId: string, startDate: string) {
     }),
   ]);
 
-  // Fetch historical item snapshots closest to startDate
-  // We get the most recent snapshot on or before the startDate for each item
-  const historicalSnapshots = await db.query.itemValueSnapshots.findMany({
-    where: and(
-      eq(itemValueSnapshots.userId, userId),
-      lte(itemValueSnapshots.date, startDate)
-    ),
-    orderBy: [desc(itemValueSnapshots.date)],
-  });
+  // Collect all tickers that need price lookups
+  const tickersToFetch: Map<string, { shares: number; assetId: string }[]> = new Map();
+  const assetTickerMap = new Map<string, { ticker: string; shares: number }>();
 
-  // Create a map of itemId -> most recent snapshot value
-  const historicalValueMap = new Map<string, number>();
-  const seenItems = new Set<string>();
+  for (const asset of dbManualAssets) {
+    let ticker: string | null = null;
+    let shares = 0;
 
-  for (const snapshot of historicalSnapshots) {
-    if (!seenItems.has(snapshot.itemId)) {
-      const value = decryptNumber(snapshot.valueEncrypted, userId);
-      historicalValueMap.set(snapshot.itemId, value);
-      seenItems.add(snapshot.itemId);
+    // First check metadata
+    if (asset.metadata && typeof asset.metadata === "object") {
+      const metadata = asset.metadata as AssetMetadata;
+      if (metadata.ticker) {
+        ticker = metadata.ticker.toUpperCase();
+        shares = metadata.shares ?? 0;
+      }
+    }
+
+    // Fall back to parsing description (e.g., "TWLO - 340 shares")
+    if (!ticker && asset.description) {
+      const parsed = parseDescription(asset.description);
+      ticker = parsed.ticker;
+      shares = parsed.shares;
+    }
+
+    if (ticker && shares > 0) {
+      assetTickerMap.set(asset.id, { ticker, shares });
+
+      if (!tickersToFetch.has(ticker)) {
+        tickersToFetch.set(ticker, []);
+      }
+      tickersToFetch.get(ticker)!.push({ shares, assetId: asset.id });
     }
   }
 
-  // Also get the portfolio snapshot for total comparison
-  const historicalPortfolioSnapshot = await db.query.portfolioSnapshots.findFirst({
-    where: and(
-      eq(portfolioSnapshots.userId, userId),
-      lte(portfolioSnapshots.date, startDate)
-    ),
-    orderBy: [desc(portfolioSnapshots.date)],
-  });
+  // Fetch historical and current prices for all tickers in parallel
+  const pricePromises: Promise<{
+    ticker: string;
+    currentPrice: number | null;
+    historicalPrice: number | null;
+  }>[] = [];
+
+  for (const ticker of tickersToFetch.keys()) {
+    pricePromises.push(
+      Promise.all([
+        fetchCurrentPrice(ticker),
+        fetchHistoricalPrice(ticker, startDate),
+      ]).then(([currentPrice, historicalPrice]) => ({
+        ticker,
+        currentPrice,
+        historicalPrice,
+      }))
+    );
+  }
+
+  const priceResults = await Promise.all(pricePromises);
+  const priceMap = new Map<string, { currentPrice: number | null; historicalPrice: number | null }>();
+
+  for (const result of priceResults) {
+    priceMap.set(result.ticker, {
+      currentPrice: result.currentPrice,
+      historicalPrice: result.historicalPrice,
+    });
+  }
 
   const performanceItems: PerformanceItem[] = [];
 
   // Process manual assets
   for (const asset of dbManualAssets) {
-    const currentValue = decryptNumber(asset.valueEncrypted, userId);
-    const startValue = historicalValueMap.get(asset.id) ?? currentValue;
+    const storedValue = decryptNumber(asset.valueEncrypted, userId);
+    let currentValue = storedValue;
+    let startValue = storedValue;
+    let changePercent: number | null = 0;
+    let ticker: string | undefined;
+
+    // Check if this asset has ticker info (from metadata or description)
+    const tickerInfo = assetTickerMap.get(asset.id);
+
+    if (tickerInfo) {
+      ticker = tickerInfo.ticker;
+      const shares = tickerInfo.shares;
+      const prices = priceMap.get(ticker);
+
+      if (prices && shares > 0) {
+        // Use live prices if available
+        if (prices.currentPrice !== null) {
+          currentValue = shares * prices.currentPrice;
+        }
+
+        if (prices.historicalPrice !== null) {
+          startValue = shares * prices.historicalPrice;
+          changePercent = calculatePerformance(currentValue, startValue);
+        } else {
+          // No historical price available, can't calculate performance
+          startValue = currentValue;
+          changePercent = null;
+        }
+      }
+    }
 
     const item: PerformanceItem = {
       id: asset.id,
@@ -144,26 +265,91 @@ async function calculateRealPerformance(userId: string, startDate: string) {
       category: asset.category,
       currentValue,
       startValue,
-      changePercent: calculatePerformance(currentValue, startValue),
+      changePercent,
+      ticker,
     };
-
-    // Add ticker if available
-    if (asset.metadata && typeof asset.metadata === "object") {
-      const metadata = asset.metadata as AssetMetadata;
-      if (metadata.ticker) {
-        item.ticker = metadata.ticker;
-      }
-    }
 
     performanceItems.push(item);
   }
 
-  // Process crypto wallets
+  // Map crypto chain names to Yahoo Finance tickers
+  const cryptoTickerMap: Record<string, string> = {
+    bitcoin: "BTC-USD",
+    ethereum: "ETH-USD",
+    solana: "SOL-USD",
+    cardano: "ADA-USD",
+    dogecoin: "DOGE-USD",
+    polkadot: "DOT-USD",
+    avalanche: "AVAX-USD",
+    polygon: "MATIC-USD",
+    chainlink: "LINK-USD",
+    litecoin: "LTC-USD",
+  };
+
+  // Collect unique crypto tickers to fetch
+  const cryptoTickersToFetch = new Set<string>();
   for (const wallet of dbCryptoWallets) {
-    const currentValue = wallet.balanceUsdEncrypted
+    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    if (ticker) {
+      cryptoTickersToFetch.add(ticker);
+    }
+  }
+
+  // Fetch crypto prices in parallel
+  const cryptoPricePromises: Promise<{
+    ticker: string;
+    currentPrice: number | null;
+    historicalPrice: number | null;
+  }>[] = [];
+
+  for (const ticker of cryptoTickersToFetch) {
+    cryptoPricePromises.push(
+      Promise.all([
+        fetchCurrentPrice(ticker),
+        fetchHistoricalPrice(ticker, startDate),
+      ]).then(([currentPrice, historicalPrice]) => ({
+        ticker,
+        currentPrice,
+        historicalPrice,
+      }))
+    );
+  }
+
+  const cryptoPriceResults = await Promise.all(cryptoPricePromises);
+  const cryptoPriceMap = new Map<string, { currentPrice: number | null; historicalPrice: number | null }>();
+
+  for (const result of cryptoPriceResults) {
+    cryptoPriceMap.set(result.ticker, {
+      currentPrice: result.currentPrice,
+      historicalPrice: result.historicalPrice,
+    });
+  }
+
+  // Process crypto wallets with historical prices
+  for (const wallet of dbCryptoWallets) {
+    const storedValue = wallet.balanceUsdEncrypted
       ? decryptNumber(wallet.balanceUsdEncrypted, userId)
       : 0;
-    const startValue = historicalValueMap.get(wallet.id) ?? currentValue;
+
+    let currentValue = storedValue;
+    let startValue = storedValue;
+    let changePercent: number | null = 0;
+
+    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    if (ticker) {
+      const prices = cryptoPriceMap.get(ticker);
+
+      if (prices && storedValue > 0) {
+        // Calculate the coin balance from stored USD value and current price
+        // This is an approximation since we store USD value, not coin count
+        if (prices.currentPrice && prices.historicalPrice) {
+          // Use price ratio to calculate historical value
+          const priceRatio = prices.historicalPrice / prices.currentPrice;
+          startValue = storedValue * priceRatio;
+          changePercent = calculatePerformance(currentValue, startValue);
+        }
+      }
+    }
 
     performanceItems.push({
       id: wallet.id,
@@ -172,15 +358,14 @@ async function calculateRealPerformance(userId: string, startDate: string) {
       category: "crypto",
       currentValue,
       startValue,
-      changePercent: calculatePerformance(currentValue, startValue),
+      changePercent,
       ticker: wallet.chain.toUpperCase(),
     });
   }
 
-  // Process Plaid accounts
+  // Process Plaid accounts (bank accounts don't have market-based performance)
   for (const account of dbAccounts) {
     const currentValue = decryptNumber(account.balanceEncrypted, userId);
-    const startValue = historicalValueMap.get(account.id) ?? currentValue;
 
     performanceItems.push({
       id: account.id,
@@ -188,12 +373,12 @@ async function calculateRealPerformance(userId: string, startDate: string) {
       name: account.name,
       category: account.category,
       currentValue,
-      startValue,
-      changePercent: calculatePerformance(currentValue, startValue),
+      startValue: currentValue,
+      changePercent: 0, // Bank accounts don't have market performance
     });
   }
 
-  // Calculate totals
+  // Calculate totals from actual item values (which now include live stock prices)
   const assetItems = performanceItems.filter((i) => i.type === "asset");
   const liabilityItems = performanceItems.filter((i) => i.type === "liability");
 
@@ -201,33 +386,22 @@ async function calculateRealPerformance(userId: string, startDate: string) {
   const currentLiabilities = liabilityItems.reduce((sum, i) => sum + i.currentValue, 0);
   const currentNetWorth = currentAssets - currentLiabilities;
 
-  // Use historical portfolio snapshot for totals if available
-  let startAssets: number | null = null;
-  let startLiabilities: number | null = null;
-  let startNetWorth: number | null = null;
-
-  if (historicalPortfolioSnapshot) {
-    startAssets = parseFloat(historicalPortfolioSnapshot.totalAssets);
-    startLiabilities = parseFloat(historicalPortfolioSnapshot.totalLiabilities);
-    startNetWorth = parseFloat(historicalPortfolioSnapshot.netWorth);
-  } else {
-    // Calculate from item start values
-    startAssets = assetItems.reduce((sum, i) => sum + (i.startValue ?? i.currentValue), 0);
-    startLiabilities = liabilityItems.reduce((sum, i) => sum + (i.startValue ?? i.currentValue), 0);
-    startNetWorth = startAssets - startLiabilities;
-  }
+  // Calculate start values from item start values (which now include historical stock prices)
+  const startAssets = assetItems.reduce((sum, i) => sum + (i.startValue ?? i.currentValue), 0);
+  const startLiabilities = liabilityItems.reduce((sum, i) => sum + (i.startValue ?? i.currentValue), 0);
+  const startNetWorth = startAssets - startLiabilities;
 
   const response: PerformanceResponse = {
     totals: {
       currentAssets,
       startAssets,
-      assetsChange: startAssets !== null ? calculatePerformance(currentAssets, startAssets) : null,
+      assetsChange: calculatePerformance(currentAssets, startAssets),
       currentLiabilities,
       startLiabilities,
-      liabilitiesChange: startLiabilities !== null ? calculatePerformance(currentLiabilities, startLiabilities) : null,
+      liabilitiesChange: calculatePerformance(currentLiabilities, startLiabilities),
       currentNetWorth,
       startNetWorth,
-      netWorthChange: startNetWorth !== null ? calculatePerformance(currentNetWorth, startNetWorth) : null,
+      netWorthChange: calculatePerformance(currentNetWorth, startNetWorth),
     },
     items: performanceItems,
   };
@@ -241,48 +415,203 @@ async function calculateMockPerformance(userId: string, startDate: string) {
   const mockCryptoWallets = mockDb.cryptoWallets.findByUserId(userId);
   const mockPlaidAccounts = mockDb.plaidAccounts.findByUserId(userId);
 
-  // Get historical snapshot closest to startDate
-  const snapshots = mockDb.portfolioSnapshots.findByUserId(userId, startDate);
-  const historicalSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
-
   const performanceItems: PerformanceItem[] = [];
+
+  // Collect all tickers that need price lookups
+  // Check both metadata and description for ticker/shares info
+  const tickersToFetch: Map<string, { shares: number; assetId: string }[]> = new Map();
+  const assetTickerMap = new Map<string, { ticker: string; shares: number }>();
+
+  for (const asset of mockManualAssets) {
+    let ticker: string | null = null;
+    let shares = 0;
+
+    // First check metadata
+    if (asset.metadata?.ticker) {
+      const metadata = asset.metadata as AssetMetadata;
+      ticker = metadata.ticker!.toUpperCase();
+      shares = metadata.shares ?? 0;
+    }
+
+    // Fall back to parsing description (e.g., "TWLO - 340 shares")
+    if (!ticker && asset.description) {
+      const parsed = parseDescription(asset.description);
+      ticker = parsed.ticker;
+      shares = parsed.shares;
+    }
+
+    if (ticker && shares > 0) {
+      assetTickerMap.set(asset.id, { ticker, shares });
+
+      if (!tickersToFetch.has(ticker)) {
+        tickersToFetch.set(ticker, []);
+      }
+      tickersToFetch.get(ticker)!.push({ shares, assetId: asset.id });
+    }
+  }
+
+  // Fetch historical and current prices for all tickers in parallel
+  const pricePromises: Promise<{
+    ticker: string;
+    currentPrice: number | null;
+    historicalPrice: number | null;
+  }>[] = [];
+
+  for (const ticker of tickersToFetch.keys()) {
+    pricePromises.push(
+      Promise.all([
+        fetchCurrentPrice(ticker),
+        fetchHistoricalPrice(ticker, startDate),
+      ]).then(([currentPrice, historicalPrice]) => ({
+        ticker,
+        currentPrice,
+        historicalPrice,
+      }))
+    );
+  }
+
+  const priceResults = await Promise.all(pricePromises);
+  const priceMap = new Map<string, { currentPrice: number | null; historicalPrice: number | null }>();
+
+  for (const result of priceResults) {
+    priceMap.set(result.ticker, {
+      currentPrice: result.currentPrice,
+      historicalPrice: result.historicalPrice,
+    });
+  }
 
   // Process manual assets
   for (const asset of mockManualAssets) {
+    let currentValue = asset.value;
+    let startValue = asset.value;
+    let changePercent: number | null = 0;
+    let ticker: string | undefined;
+
+    // Check if this asset has ticker info (from metadata or description)
+    const tickerInfo = assetTickerMap.get(asset.id);
+
+    if (tickerInfo) {
+      ticker = tickerInfo.ticker;
+      const shares = tickerInfo.shares;
+      const prices = priceMap.get(ticker);
+
+      if (prices && shares > 0) {
+        // Use live prices if available
+        if (prices.currentPrice !== null) {
+          currentValue = shares * prices.currentPrice;
+        }
+
+        if (prices.historicalPrice !== null) {
+          startValue = shares * prices.historicalPrice;
+          changePercent = calculatePerformance(currentValue, startValue);
+        } else {
+          // No historical price available, can't calculate performance
+          startValue = currentValue;
+          changePercent = null;
+        }
+      }
+    }
+
     const item: PerformanceItem = {
       id: asset.id,
       type: asset.isAsset ? "asset" : "liability",
       name: asset.name,
       category: asset.category,
-      currentValue: asset.value,
-      startValue: asset.value, // Default to current (0% change)
-      changePercent: 0,
+      currentValue,
+      startValue,
+      changePercent,
+      ticker,
     };
-
-    // Add ticker if available
-    if (asset.metadata?.ticker) {
-      const metadata = asset.metadata as AssetMetadata;
-      item.ticker = metadata.ticker;
-    }
 
     performanceItems.push(item);
   }
 
-  // Process crypto wallets
+  // Map crypto chain names to Yahoo Finance tickers
+  const cryptoTickerMap: Record<string, string> = {
+    bitcoin: "BTC-USD",
+    ethereum: "ETH-USD",
+    solana: "SOL-USD",
+    cardano: "ADA-USD",
+    dogecoin: "DOGE-USD",
+    polkadot: "DOT-USD",
+    avalanche: "AVAX-USD",
+    polygon: "MATIC-USD",
+    chainlink: "LINK-USD",
+    litecoin: "LTC-USD",
+  };
+
+  // Collect unique crypto tickers to fetch
+  const cryptoTickersToFetch = new Set<string>();
   for (const wallet of mockCryptoWallets) {
+    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    if (ticker) {
+      cryptoTickersToFetch.add(ticker);
+    }
+  }
+
+  // Fetch crypto prices in parallel
+  const cryptoPricePromises: Promise<{
+    ticker: string;
+    currentPrice: number | null;
+    historicalPrice: number | null;
+  }>[] = [];
+
+  for (const ticker of cryptoTickersToFetch) {
+    cryptoPricePromises.push(
+      Promise.all([
+        fetchCurrentPrice(ticker),
+        fetchHistoricalPrice(ticker, startDate),
+      ]).then(([currentPrice, historicalPrice]) => ({
+        ticker,
+        currentPrice,
+        historicalPrice,
+      }))
+    );
+  }
+
+  const cryptoPriceResults = await Promise.all(cryptoPricePromises);
+  const cryptoPriceMap = new Map<string, { currentPrice: number | null; historicalPrice: number | null }>();
+
+  for (const result of cryptoPriceResults) {
+    cryptoPriceMap.set(result.ticker, {
+      currentPrice: result.currentPrice,
+      historicalPrice: result.historicalPrice,
+    });
+  }
+
+  // Process crypto wallets with historical prices
+  for (const wallet of mockCryptoWallets) {
+    const storedValue = wallet.balanceUsd;
+    let currentValue = storedValue;
+    let startValue = storedValue;
+    let changePercent: number | null = 0;
+
+    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    if (ticker) {
+      const prices = cryptoPriceMap.get(ticker);
+
+      if (prices && storedValue > 0) {
+        if (prices.currentPrice && prices.historicalPrice) {
+          const priceRatio = prices.historicalPrice / prices.currentPrice;
+          startValue = storedValue * priceRatio;
+          changePercent = calculatePerformance(currentValue, startValue);
+        }
+      }
+    }
+
     performanceItems.push({
       id: wallet.id,
       type: "asset",
       name: `${wallet.chain} Wallet`,
       category: "crypto",
-      currentValue: wallet.balanceUsd,
-      startValue: wallet.balanceUsd,
-      changePercent: 0,
+      currentValue,
+      startValue,
+      changePercent,
       ticker: wallet.chain.toUpperCase(),
     });
   }
 
-  // Process Plaid accounts
+  // Process Plaid accounts (bank accounts don't have market-based performance)
   for (const account of mockPlaidAccounts) {
     performanceItems.push({
       id: account.id,
@@ -291,11 +620,11 @@ async function calculateMockPerformance(userId: string, startDate: string) {
       category: account.category,
       currentValue: account.balance,
       startValue: account.balance,
-      changePercent: 0,
+      changePercent: 0, // Bank accounts don't have market performance
     });
   }
 
-  // Calculate totals
+  // Calculate totals from actual item values
   const assetItems = performanceItems.filter((i) => i.type === "asset");
   const liabilityItems = performanceItems.filter((i) => i.type === "liability");
 
@@ -303,31 +632,22 @@ async function calculateMockPerformance(userId: string, startDate: string) {
   const currentLiabilities = liabilityItems.reduce((sum, i) => sum + i.currentValue, 0);
   const currentNetWorth = currentAssets - currentLiabilities;
 
-  let startAssets: number | null = null;
-  let startLiabilities: number | null = null;
-  let startNetWorth: number | null = null;
-
-  if (historicalSnapshot) {
-    startAssets = historicalSnapshot.totalAssets;
-    startLiabilities = historicalSnapshot.totalLiabilities;
-    startNetWorth = historicalSnapshot.netWorth;
-  } else {
-    startAssets = currentAssets;
-    startLiabilities = currentLiabilities;
-    startNetWorth = currentNetWorth;
-  }
+  // Calculate start values from item start values (which now include historical stock prices)
+  const startAssets = assetItems.reduce((sum, i) => sum + (i.startValue ?? i.currentValue), 0);
+  const startLiabilities = liabilityItems.reduce((sum, i) => sum + (i.startValue ?? i.currentValue), 0);
+  const startNetWorth = startAssets - startLiabilities;
 
   const response: PerformanceResponse = {
     totals: {
       currentAssets,
       startAssets,
-      assetsChange: startAssets !== null ? calculatePerformance(currentAssets, startAssets) : null,
+      assetsChange: calculatePerformance(currentAssets, startAssets),
       currentLiabilities,
       startLiabilities,
-      liabilitiesChange: startLiabilities !== null ? calculatePerformance(currentLiabilities, startLiabilities) : null,
+      liabilitiesChange: calculatePerformance(currentLiabilities, startLiabilities),
       currentNetWorth,
       startNetWorth,
-      netWorthChange: startNetWorth !== null ? calculatePerformance(currentNetWorth, startNetWorth) : null,
+      netWorthChange: calculatePerformance(currentNetWorth, startNetWorth),
     },
     items: performanceItems,
   };

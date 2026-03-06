@@ -91,8 +91,11 @@ export function LoansList({
   const [editingAsset, setEditingAsset] = useState<EditableAsset | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
 
-  const getItemPerformance = (itemId: string): number | null => {
-    return performance?.items.find((i) => i.id === itemId)?.changePercent ?? null;
+  const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
+    const item = performance?.items.find((i) => i.id === itemId);
+    if (!item) return { percent: null, dollarChange: null };
+    const dollarChange = item.startValue !== null ? item.currentValue - item.startValue : null;
+    return { percent: item.changePercent, dollarChange };
   };
 
   const handleEditSuccess = () => {
@@ -272,7 +275,8 @@ export function LoansList({
                   -{formatCurrency(Math.abs(account.balance))}
                 </span>
                 <PerformanceBadge
-                  value={getItemPerformance(account.id)}
+                  value={getItemPerformance(account.id).percent}
+                  dollarChange={getItemPerformance(account.id).dollarChange}
                   size="sm"
                 />
               </div>

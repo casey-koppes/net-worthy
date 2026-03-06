@@ -4,10 +4,22 @@ import { cn } from "@/lib/utils";
 
 interface PerformanceBadgeProps {
   value: number | null | undefined;
+  dollarChange?: number | null;
   showIcon?: boolean;
+  showDollarChange?: boolean;
   size?: "sm" | "default";
   className?: string;
   periodLabel?: string;
+}
+
+function formatDollarChange(amount: number): string {
+  const absAmount = Math.abs(amount);
+  if (absAmount >= 1000000) {
+    return `${(absAmount / 1000000).toFixed(2)}M`;
+  } else if (absAmount >= 1000) {
+    return `${(absAmount / 1000).toFixed(2)}K`;
+  }
+  return absAmount.toFixed(2);
 }
 
 /**
@@ -17,10 +29,13 @@ interface PerformanceBadgeProps {
  * - Zero/null: muted text, no icon
  *
  * Format: "11%▲" for positive, "5%▼" for negative
+ * Optionally shows dollar change: "(+$1,234.56)" or "(-$567.89)"
  */
 export function PerformanceBadge({
   value,
+  dollarChange,
   showIcon = true,
+  showDollarChange = true,
   size = "default",
   className,
   periodLabel,
@@ -50,20 +65,34 @@ export function PerformanceBadge({
   // Use proper triangle symbols as user requested
   const icon = isPositive ? "▲" : isNegative ? "▼" : "";
 
+  // Format dollar change
+  const dollarChangeDisplay =
+    showDollarChange && dollarChange !== null && dollarChange !== undefined && dollarChange !== 0
+      ? dollarChange > 0
+        ? `(+$${formatDollarChange(dollarChange)})`
+        : `(-$${formatDollarChange(Math.abs(dollarChange))})`
+      : null;
+
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium whitespace-nowrap",
-        colorClass,
+        "inline-flex flex-col items-end font-medium whitespace-nowrap",
         size === "sm" ? "text-xs" : "text-sm",
         className
       )}
     >
-      <span>{displayValue}%</span>
-      {showIcon && icon && <span>{icon}</span>}
-      {periodLabel && (
-        <span className="text-muted-foreground font-normal ml-1">
-          ({periodLabel})
+      <span className={cn("inline-flex items-center", colorClass)}>
+        <span>{displayValue}%</span>
+        {showIcon && icon && <span>{icon}</span>}
+        {periodLabel && (
+          <span className="text-muted-foreground font-normal ml-1">
+            ({periodLabel})
+          </span>
+        )}
+      </span>
+      {dollarChangeDisplay && (
+        <span className={cn("text-xs", colorClass)}>
+          {dollarChangeDisplay}
         </span>
       )}
     </span>
