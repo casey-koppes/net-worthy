@@ -50,14 +50,32 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Failed to create link token:", error);
 
-    // Log detailed Plaid error if available
+    // Extract detailed error info
+    let errorMessage = "Failed to create link token";
+    let errorDetails = null;
+
     if (error?.response?.data) {
       console.error("Plaid error details:", JSON.stringify(error.response.data, null, 2));
+      errorMessage = error.response.data.error_message || errorMessage;
+      errorDetails = {
+        error_type: error.response.data.error_type,
+        error_code: error.response.data.error_code,
+        error_message: error.response.data.error_message,
+      };
+    } else if (error?.message) {
+      errorMessage = error.message;
     }
 
-    const errorMessage = error?.response?.data?.error_message || "Failed to create link token";
     return NextResponse.json(
-      { error: errorMessage },
+      {
+        error: errorMessage,
+        details: errorDetails,
+        debug: {
+          hasClientId: !!process.env.PLAID_CLIENT_ID,
+          hasSecret: !!process.env.PLAID_SECRET,
+          env: process.env.PLAID_ENV || "sandbox",
+        },
+      },
       { status: 500 }
     );
   }
