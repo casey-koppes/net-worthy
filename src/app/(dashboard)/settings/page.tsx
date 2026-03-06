@@ -11,7 +11,19 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { toast } from "sonner";
 
 interface PlaidConnection {
   id: string;
@@ -42,6 +54,44 @@ export default function SettingsPage() {
       console.error("Failed to fetch connections:", error);
     } finally {
       setIsLoadingConnections(false);
+    }
+  }
+
+  async function syncConnection(connectionId: string) {
+    try {
+      toast.info("Syncing accounts...");
+      const res = await fetch(`/api/plaid/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId, userId: dbUserId }),
+      });
+
+      if (res.ok) {
+        toast.success("Accounts synced successfully");
+        fetchConnections();
+      } else {
+        toast.error("Failed to sync accounts");
+      }
+    } catch (error) {
+      toast.error("Failed to sync accounts");
+    }
+  }
+
+  async function disconnectPlaid(connectionId: string) {
+    try {
+      const res = await fetch(
+        `/api/plaid/connections?connectionId=${connectionId}&userId=${dbUserId}`,
+        { method: "DELETE" }
+      );
+
+      if (res.ok) {
+        toast.success("Connection removed successfully");
+        fetchConnections();
+      } else {
+        toast.error("Failed to remove connection");
+      }
+    } catch (error) {
+      toast.error("Failed to remove connection");
     }
   }
 
@@ -107,19 +157,55 @@ export default function SettingsPage() {
                 No bank accounts connected yet.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {plaidConnections.map((connection) => (
                   <div
                     key={connection.id}
-                    className="flex items-center justify-between rounded-md border p-2 text-sm"
+                    className="flex items-center justify-between rounded-lg border p-4"
                   >
-                    <div>
-                      <p className="font-medium">{connection.institutionName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {connection.accountCount} account{connection.accountCount !== 1 ? "s" : ""}
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="font-medium">{connection.institutionName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {connection.accountCount} account{connection.accountCount !== 1 ? "s" : ""} connected
+                        </p>
+                      </div>
                     </div>
-                    {getStatusBadge(connection.status)}
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(connection.status)}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => syncConnection(connection.id)}
+                      >
+                        Sync
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="text-destructive">
+                            Disconnect
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Disconnect Account?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the connection to {connection.institutionName}{" "}
+                              and all associated account data. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => disconnectPlaid(connection.id)}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Disconnect
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))}
               </div>
