@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -20,7 +20,6 @@ import { NetWorthChart } from "@/components/charts/net-worth-chart";
 import { AllocationChart } from "@/components/charts/allocation-chart";
 import { UnitsChart } from "@/components/charts/units-chart";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 
 interface HistoryDataPoint {
   date: string;
@@ -71,12 +70,26 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-interface LiabilityItem {
+interface ManualAssetItem {
   id: string;
   category: string;
   name: string;
   value: number;
   isAsset: boolean;
+}
+
+interface PlaidAccount {
+  id: string;
+  type: string;
+  category: string;
+  balance: number;
+  isAsset: boolean;
+}
+
+interface CryptoWallet {
+  id: string;
+  balanceUsd: number;
+  isHidden?: boolean;
 }
 
 interface UnitAsset {
@@ -91,26 +104,170 @@ interface UnitSnapshot {
   units: number;
 }
 
+interface AssetBreakdown {
+  bank: number;
+  investment: number;
+  crypto: number;
+  realEstate: number;
+  vehicle: number;
+  other: number;
+}
+
+interface LiabilityBreakdown {
+  credit: number;
+  loan: number;
+  mortgage: number;
+  other: number;
+}
+
 export default function ReportsPage() {
   const { dbUserId } = useAuthStore();
-  const { summary } = usePortfolioStore();
   const [period, setPeriod] = useState("30d");
   const [history, setHistory] = useState<HistoryDataPoint[]>([]);
   const [stats, setStats] = useState<HistoryStats | null>(null);
-  const [liabilities, setLiabilities] = useState<LiabilityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitAssets, setUnitAssets] = useState<UnitAsset[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string>("");
   const [unitSnapshots, setUnitSnapshots] = useState<UnitSnapshot[]>([]);
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
 
+  // Asset and liability breakdown state
+  const [assetBreakdown, setAssetBreakdown] = useState<AssetBreakdown>({
+    bank: 0,
+    investment: 0,
+    crypto: 0,
+    realEstate: 0,
+    vehicle: 0,
+    other: 0,
+  });
+  const [liabilityBreakdown, setLiabilityBreakdown] = useState<LiabilityBreakdown>({
+    credit: 0,
+    loan: 0,
+    mortgage: 0,
+    other: 0,
+  });
+
+  const fetchAllPortfolioData = useCallback(async () => {
+    if (!dbUserId) return;
+
+    try {
+      // Fetch all data in parallel
+      const [manualAssetsRes, plaidAccountsRes, cryptoWalletsRes] = await Promise.all([
+        fetch(`/api/portfolio/manual-assets?userId=${dbUserId}`),
+        fetch(`/api/plaid/accounts?userId=${dbUserId}`),
+        fetch(`/api/crypto/wallets?userId=${dbUserId}`),
+      ]);
+
+      const newAssetBreakdown: AssetBreakdown = {
+        bank: 0,
+        investment: 0,
+        crypto: 0,
+        realEstate: 0,
+        vehicle: 0,
+        other: 0,
+      };
+
+      const newLiabilityBreakdown: LiabilityBreakdown = {
+        credit: 0,
+        loan: 0,
+        mortgage: 0,
+        other: 0,
+      };
+
+      // Process manual assets
+      if (manualAssetsRes.ok) {
+        const data = await manualAssetsRes.json();
+        const assets = data.assets || [];
+
+        for (const asset of assets as ManualAssetItem[]) {
+          if (asset.isAsset) {
+            // Assets
+            switch (asset.category) {
+              case "bank":
+                newAssetBreakdown.bank += asset.value;
+                break;
+              case "investment":
+                newAssetBreakdown.investment += asset.value;
+                break;
+              case "real_estate":
+                newAssetBreakdown.realEstate += asset.value;
+                break;
+              case "vehicle":
+                newAssetBreakdown.vehicle += asset.value;
+                break;
+              default:
+                newAssetBreakdown.other += asset.value;
+            }
+          } else {
+            // Liabilities
+            switch (asset.category) {
+              case "credit":
+                newLiabilityBreakdown.credit += asset.value;
+                break;
+              case "loan":
+                newLiabilityBreakdown.loan += asset.value;
+                break;
+              case "real_estate":
+                newLiabilityBreakdown.mortgage += asset.value;
+                break;
+              default:
+                newLiabilityBreakdown.other += asset.value;
+            }
+          }
+        }
+      }
+
+      // Process Plaid accounts
+      if (plaidAccountsRes.ok) {
+        const data = await plaidAccountsRes.json();
+        const accounts = data.accounts || [];
+
+        for (const account of accounts as PlaidAccount[]) {
+          if (account.isAsset) {
+            // Assets
+            if (account.category === "bank") {
+              newAssetBreakdown.bank += account.balance;
+            } else if (account.category === "investment") {
+              newAssetBreakdown.investment += account.balance;
+            }
+          } else {
+            // Liabilities
+            if (account.type === "credit") {
+              newLiabilityBreakdown.credit += account.balance;
+            } else if (account.type === "loan") {
+              // Check subtype for mortgage vs other loans
+              newLiabilityBreakdown.loan += account.balance;
+            }
+          }
+        }
+      }
+
+      // Process crypto wallets
+      if (cryptoWalletsRes.ok) {
+        const data = await cryptoWalletsRes.json();
+        const wallets = data.wallets || [];
+
+        for (const wallet of wallets as CryptoWallet[]) {
+          if (!wallet.isHidden) {
+            newAssetBreakdown.crypto += wallet.balanceUsd || 0;
+          }
+        }
+      }
+
+      setAssetBreakdown(newAssetBreakdown);
+      setLiabilityBreakdown(newLiabilityBreakdown);
+    } catch (error) {
+      console.error("Failed to fetch portfolio data:", error);
+    }
+  }, [dbUserId]);
+
   useEffect(() => {
     if (dbUserId) {
       fetchHistory();
-      fetchLiabilities();
+      fetchAllPortfolioData();
       fetchUnitAssets();
     }
-  }, [dbUserId, period]);
+  }, [dbUserId, period, fetchAllPortfolioData]);
 
   useEffect(() => {
     if (dbUserId && selectedAssetId) {
@@ -133,21 +290,6 @@ export default function ReportsPage() {
       console.error("Failed to fetch history:", error);
     } finally {
       setIsLoading(false);
-    }
-  }
-
-  async function fetchLiabilities() {
-    try {
-      const res = await fetch(`/api/portfolio/manual-assets?userId=${dbUserId}`);
-      if (res.ok) {
-        const data = await res.json();
-        const liabilityItems = (data.assets || []).filter(
-          (asset: LiabilityItem) => !asset.isAsset
-        );
-        setLiabilities(liabilityItems);
-      }
-    } catch (error) {
-      console.error("Failed to fetch liabilities:", error);
     }
   }
 
@@ -185,52 +327,23 @@ export default function ReportsPage() {
     }
   }
 
-  // Prepare asset allocation data
-  const assetAllocationData = summary?.breakdown
-    ? [
-        { name: "Bank", value: summary.breakdown.bank, color: ASSET_COLORS.bank },
-        {
-          name: "Investments",
-          value: summary.breakdown.investment,
-          color: ASSET_COLORS.investment,
-        },
-        { name: "Crypto", value: summary.breakdown.crypto, color: ASSET_COLORS.crypto },
-        {
-          name: "Real Estate",
-          value: summary.breakdown.realEstate,
-          color: ASSET_COLORS.realEstate,
-        },
-        { name: "Vehicles", value: summary.breakdown.vehicle, color: ASSET_COLORS.vehicle },
-        { name: "Other", value: summary.breakdown.other, color: ASSET_COLORS.other },
-      ]
-    : [];
+  // Prepare asset allocation data from fetched data
+  const assetAllocationData = [
+    { name: "Bank", value: assetBreakdown.bank, color: ASSET_COLORS.bank },
+    { name: "Investments", value: assetBreakdown.investment, color: ASSET_COLORS.investment },
+    { name: "Crypto", value: assetBreakdown.crypto, color: ASSET_COLORS.crypto },
+    { name: "Real Estate", value: assetBreakdown.realEstate, color: ASSET_COLORS.realEstate },
+    { name: "Vehicles", value: assetBreakdown.vehicle, color: ASSET_COLORS.vehicle },
+    { name: "Other", value: assetBreakdown.other, color: ASSET_COLORS.other },
+  ];
 
-  // Prepare liability allocation data - group by category
-  const liabilityByCategory = liabilities.reduce((acc, item) => {
-    const category = item.category || "other";
-    if (!acc[category]) {
-      acc[category] = 0;
-    }
-    acc[category] += item.value;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const categoryLabels: Record<string, string> = {
-    bank: "Bank Debt",
-    investment: "Investment Debt",
-    real_estate: "Mortgage",
-    vehicle: "Auto Loan",
-    other: "Other Debt",
-  };
-
-  const liabilityAllocationData = Object.entries(liabilityByCategory).map(([category, value]) => ({
-    name: categoryLabels[category] || category.replace("_", " "),
-    value,
-    color: category === "real_estate" ? LIABILITY_COLORS.mortgage :
-           category === "vehicle" ? LIABILITY_COLORS.loan :
-           category === "bank" ? LIABILITY_COLORS.credit :
-           LIABILITY_COLORS.other,
-  }));
+  // Prepare liability allocation data from fetched data
+  const liabilityAllocationData = [
+    { name: "Credit Cards", value: liabilityBreakdown.credit, color: LIABILITY_COLORS.credit },
+    { name: "Loans", value: liabilityBreakdown.loan, color: LIABILITY_COLORS.loan },
+    { name: "Mortgage", value: liabilityBreakdown.mortgage, color: LIABILITY_COLORS.mortgage },
+    { name: "Other Debt", value: liabilityBreakdown.other, color: LIABILITY_COLORS.other },
+  ];
 
   return (
     <div className="space-y-6">
@@ -241,7 +354,7 @@ export default function ReportsPage() {
             Track your net worth over time
           </p>
         </div>
-        <Button variant="outline" onClick={fetchHistory}>
+        <Button variant="outline" onClick={() => { fetchHistory(); fetchAllPortfolioData(); }}>
           Refresh
         </Button>
       </div>
