@@ -11,53 +11,11 @@ import { eq, and, lte, desc } from "drizzle-orm";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
 import { calculatePerformance } from "@/lib/utils/period-utils";
 import { decryptNumber } from "@/lib/encryption";
-
-/**
- * Fetch historical stock price for a given ticker and date
- */
-async function fetchHistoricalPrice(
-  ticker: string,
-  date: string
-): Promise<number | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const response = await fetch(
-      `${baseUrl}/api/stocks/historical?ticker=${encodeURIComponent(ticker)}&date=${date}`
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.price ?? null;
-  } catch (error) {
-    console.error(`Failed to fetch historical price for ${ticker}:`, error);
-    return null;
-  }
-}
-
-/**
- * Fetch current stock price for a given ticker
- */
-async function fetchCurrentPrice(ticker: string): Promise<number | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const response = await fetch(
-      `${baseUrl}/api/stocks/quote?ticker=${encodeURIComponent(ticker)}`
-    );
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.price ?? null;
-  } catch (error) {
-    console.error(`Failed to fetch current price for ${ticker}:`, error);
-    return null;
-  }
-}
+import {
+  fetchCurrentPrice,
+  fetchHistoricalPrice,
+  cryptoTickerMap,
+} from "@/lib/utils/yahoo-finance";
 
 interface AssetMetadata {
   ticker?: string;
@@ -271,20 +229,6 @@ async function calculateRealPerformance(userId: string, startDate: string) {
 
     performanceItems.push(item);
   }
-
-  // Map crypto chain names to Yahoo Finance tickers
-  const cryptoTickerMap: Record<string, string> = {
-    bitcoin: "BTC-USD",
-    ethereum: "ETH-USD",
-    solana: "SOL-USD",
-    cardano: "ADA-USD",
-    dogecoin: "DOGE-USD",
-    polkadot: "DOT-USD",
-    avalanche: "AVAX-USD",
-    polygon: "MATIC-USD",
-    chainlink: "LINK-USD",
-    litecoin: "LTC-USD",
-  };
 
   // Collect unique crypto tickers to fetch
   const cryptoTickersToFetch = new Set<string>();
@@ -525,20 +469,6 @@ async function calculateMockPerformance(userId: string, startDate: string) {
 
     performanceItems.push(item);
   }
-
-  // Map crypto chain names to Yahoo Finance tickers
-  const cryptoTickerMap: Record<string, string> = {
-    bitcoin: "BTC-USD",
-    ethereum: "ETH-USD",
-    solana: "SOL-USD",
-    cardano: "ADA-USD",
-    dogecoin: "DOGE-USD",
-    polkadot: "DOT-USD",
-    avalanche: "AVAX-USD",
-    polygon: "MATIC-USD",
-    chainlink: "LINK-USD",
-    litecoin: "LTC-USD",
-  };
 
   // Collect unique crypto tickers to fetch
   const cryptoTickersToFetch = new Set<string>();
