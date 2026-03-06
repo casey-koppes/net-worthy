@@ -243,13 +243,13 @@ function getCompanyDomain(ticker: string | null, name: string): string | null {
   return null;
 }
 
-// Get logo URL from Brandfetch
+// Get logo URL using Clearbit's free logo API
 function getStockLogo(ticker: string | null, name: string): string | null {
   const domain = getCompanyDomain(ticker, name);
   if (!domain) return null;
 
-  // Brandfetch CDN URL format
-  return `https://cdn.brandfetch.io/${domain}/w/400/h/400/icon?c=1id_zeEoYr-tuJzEFhX`;
+  // Clearbit Logo API - free, no auth required
+  return `https://logo.clearbit.com/${domain}`;
 }
 
 // Extract ticker symbol and shares from description (e.g., "GLD - 100 shares")
