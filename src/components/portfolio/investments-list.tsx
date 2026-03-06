@@ -93,6 +93,165 @@ function getCategoryColor(category: string): string {
   }
 }
 
+// Map ticker symbols to company domains for Brandfetch logos
+function getCompanyDomain(ticker: string | null, name: string): string | null {
+  if (!ticker && !name) return null;
+
+  const tickerUpper = ticker?.toUpperCase() || "";
+  const nameLower = name.toLowerCase();
+
+  // Map popular tickers to domains
+  const tickerToDomain: Record<string, string> = {
+    // Tech Giants
+    AAPL: "apple.com",
+    MSFT: "microsoft.com",
+    GOOGL: "google.com",
+    GOOG: "google.com",
+    AMZN: "amazon.com",
+    META: "meta.com",
+    NVDA: "nvidia.com",
+    TSLA: "tesla.com",
+    AMD: "amd.com",
+    INTC: "intel.com",
+    IBM: "ibm.com",
+    ORCL: "oracle.com",
+    CRM: "salesforce.com",
+    ADBE: "adobe.com",
+    NFLX: "netflix.com",
+    PYPL: "paypal.com",
+    SQ: "squareup.com",
+    SHOP: "shopify.com",
+    UBER: "uber.com",
+    LYFT: "lyft.com",
+    ABNB: "airbnb.com",
+    SNAP: "snapchat.com",
+    PINS: "pinterest.com",
+    TWTR: "twitter.com",
+    SPOT: "spotify.com",
+    ZM: "zoom.us",
+    DOCU: "docusign.com",
+    SNOW: "snowflake.com",
+    PLTR: "palantir.com",
+    COIN: "coinbase.com",
+    RBLX: "roblox.com",
+    U: "unity.com",
+    NET: "cloudflare.com",
+    DDOG: "datadoghq.com",
+    MDB: "mongodb.com",
+    CRWD: "crowdstrike.com",
+    OKTA: "okta.com",
+
+    // Finance
+    JPM: "jpmorgan.com",
+    BAC: "bankofamerica.com",
+    WFC: "wellsfargo.com",
+    GS: "goldmansachs.com",
+    MS: "morganstanley.com",
+    C: "citigroup.com",
+    AXP: "americanexpress.com",
+    V: "visa.com",
+    MA: "mastercard.com",
+    BRK: "berkshirehathaway.com",
+    SCHW: "schwab.com",
+    BLK: "blackrock.com",
+
+    // Retail
+    WMT: "walmart.com",
+    TGT: "target.com",
+    COST: "costco.com",
+    HD: "homedepot.com",
+    LOW: "lowes.com",
+    NKE: "nike.com",
+    SBUX: "starbucks.com",
+    MCD: "mcdonalds.com",
+    DIS: "disney.com",
+
+    // Healthcare
+    JNJ: "jnj.com",
+    PFE: "pfizer.com",
+    MRNA: "modernatx.com",
+    UNH: "unitedhealthgroup.com",
+    CVS: "cvshealth.com",
+
+    // Energy
+    XOM: "exxonmobil.com",
+    CVX: "chevron.com",
+
+    // ETFs and Funds
+    VOO: "vanguard.com",
+    VTI: "vanguard.com",
+    VIG: "vanguard.com",
+    VYM: "vanguard.com",
+    VNQ: "vanguard.com",
+    VGT: "vanguard.com",
+    VTV: "vanguard.com",
+    VUG: "vanguard.com",
+    SPY: "ssga.com",
+    IVV: "blackrock.com",
+    QQQ: "invesco.com",
+    DIA: "ssga.com",
+    IWM: "blackrock.com",
+    EFA: "blackrock.com",
+    EEM: "blackrock.com",
+    GLD: "ssga.com",
+    SLV: "blackrock.com",
+    TLT: "blackrock.com",
+    HYG: "blackrock.com",
+    LQD: "blackrock.com",
+    ARKK: "ark-funds.com",
+    ARKG: "ark-funds.com",
+    ARKW: "ark-funds.com",
+
+    // Crypto-related
+    MSTR: "microstrategy.com",
+    MARA: "mara.com",
+    RIOT: "riotplatforms.com",
+  };
+
+  // Check ticker first
+  if (tickerToDomain[tickerUpper]) {
+    return tickerToDomain[tickerUpper];
+  }
+
+  // Check if name contains a company we know
+  const namePatterns: Array<[string, string]> = [
+    ["apple", "apple.com"],
+    ["microsoft", "microsoft.com"],
+    ["google", "google.com"],
+    ["alphabet", "google.com"],
+    ["amazon", "amazon.com"],
+    ["meta", "meta.com"],
+    ["facebook", "meta.com"],
+    ["nvidia", "nvidia.com"],
+    ["tesla", "tesla.com"],
+    ["vanguard", "vanguard.com"],
+    ["fidelity", "fidelity.com"],
+    ["schwab", "schwab.com"],
+    ["blackrock", "blackrock.com"],
+    ["401", null], // Retirement accounts don't need logos
+    ["ira", null],
+    ["roth", null],
+    ["retirement", null],
+  ];
+
+  for (const [pattern, domain] of namePatterns) {
+    if (nameLower.includes(pattern)) {
+      return domain;
+    }
+  }
+
+  return null;
+}
+
+// Get logo URL from Brandfetch
+function getStockLogo(ticker: string | null, name: string): string | null {
+  const domain = getCompanyDomain(ticker, name);
+  if (!domain) return null;
+
+  // Brandfetch CDN URL format
+  return `https://cdn.brandfetch.io/${domain}/w/400/h/400/icon?c=1id_zeEoYr-tuJzEFhX`;
+}
+
 // Extract ticker symbol and shares from description (e.g., "GLD - 100 shares")
 function parseDescription(description: string | null): { ticker: string | null; shares: number } {
   if (!description) return { ticker: null, shares: 0 };
@@ -355,6 +514,21 @@ export function InvestmentsList({
                   onClick={() => toggleGroup(group.name.toLowerCase())}
                 >
                   <div className="flex items-center gap-3">
+                    {getStockLogo(group.ticker, group.name) ? (
+                      <img
+                        src={getStockLogo(group.ticker, group.name)!}
+                        alt={group.ticker || group.name}
+                        className="w-8 h-8 rounded-md object-contain bg-white"
+                        onError={(e) => {
+                          // Hide broken images
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                        {(group.ticker || group.name.substring(0, 2)).toUpperCase().substring(0, 2)}
+                      </div>
+                    )}
                     <div className="flex flex-col">
                       <span className="font-medium">{group.name}</span>
                       <span className="text-sm text-muted-foreground">
