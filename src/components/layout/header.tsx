@@ -76,7 +76,7 @@ export function Header() {
                       src={avatarImage}
                       alt={displayName || "User"}
                     />
-                    <AvatarFallback>
+                    <AvatarFallback className="bg-violet-500 text-white">
                       {displayName?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
