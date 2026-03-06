@@ -23,9 +23,9 @@ export default function Home() {
           <img src="/logo.svg" alt="Net Worthy" className="h-32 w-32 md:h-40 md:w-40" />
           <div className="space-y-4">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              Know Your Worth.
+              Know Your Worth
               <br />
-              <span className="text-primary">Share Your Journey.</span>
+              <span className="text-primary">Social &quot;Networthing&quot; App.</span>
             </h1>
             <p className="mx-auto max-w-2xl text-lg text-muted-foreground md:text-xl">
               Track your net worth in real-time by connecting bank accounts,

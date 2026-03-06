@@ -18,7 +18,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { ChevronDown, ChevronUp, ExternalLink, FileBarChart } from "lucide-react";
+import { InvestmentNews } from "./investment-news";
+import { InvestmentInsights } from "./investment-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { getPeriodLabel } from "@/lib/utils/period-utils";
@@ -584,16 +594,122 @@ export function InvestmentsList({
     );
   }
 
+  // Extract tickers for news component
+  const tickers = groupedInvestments
+    .map((g) => g.ticker)
+    .filter((t): t is string => t !== null);
+
+  // Prepare holdings data for insights
+  const holdings = groupedInvestments.map((g) => ({
+    name: g.name,
+    ticker: g.ticker,
+    value: g.totalValue,
+    shares: g.totalShares,
+    percentage: total > 0 ? (g.totalValue / total) * 100 : 0,
+  }));
+
+  // Pie chart data for Report
+  const pieChartData = groupedInvestments.map((g, i) => ({
+    name: g.ticker || g.name,
+    value: g.totalValue,
+    fill: [
+      "hsl(210, 100%, 50%)",  // Blue
+      "hsl(210, 100%, 60%)",  // Lighter blue
+      "hsl(210, 100%, 70%)",  // Even lighter
+      "hsl(210, 100%, 40%)",  // Darker blue
+      "hsl(200, 100%, 50%)",  // Cyan-blue
+      "hsl(220, 100%, 50%)",  // Purple-blue
+      "hsl(210, 80%, 45%)",   // Muted blue
+      "hsl(210, 90%, 55%)",   // Medium blue
+    ][i % 8],
+  }));
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Investments</CardTitle>
-          <CardDescription>
-            {uniqueCount} investment{uniqueCount !== 1 ? "s" : ""} - Total: {formatCurrency(total)}
-          </CardDescription>
+          <CardDescription>Track your investment portfolio</CardDescription>
         </div>
         <div className="flex gap-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileBarChart className="h-4 w-4 mr-1" />
+                Report
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[400px] sm:w-[540px]">
+              <SheetHeader>
+                <SheetTitle>Investment Allocation</SheetTitle>
+                <SheetDescription>
+                  Breakdown of your investment portfolio
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6">
+                <div className="h-[300px] w-full">
+                  <svg viewBox="0 0 400 300" className="w-full h-full">
+                    {(() => {
+                      const total = pieChartData.reduce((sum, d) => sum + d.value, 0);
+                      let currentAngle = -90;
+                      const centerX = 150;
+                      const centerY = 150;
+                      const radius = 100;
+
+                      return pieChartData.map((slice, i) => {
+                        const percentage = (slice.value / total) * 100;
+                        const angle = (percentage / 100) * 360;
+                        const startAngle = currentAngle;
+                        const endAngle = currentAngle + angle;
+                        currentAngle = endAngle;
+
+                        const startRad = (startAngle * Math.PI) / 180;
+                        const endRad = (endAngle * Math.PI) / 180;
+
+                        const x1 = centerX + radius * Math.cos(startRad);
+                        const y1 = centerY + radius * Math.sin(startRad);
+                        const x2 = centerX + radius * Math.cos(endRad);
+                        const y2 = centerY + radius * Math.sin(endRad);
+
+                        const largeArc = angle > 180 ? 1 : 0;
+
+                        const pathD = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+                        return (
+                          <path
+                            key={i}
+                            d={pathD}
+                            fill={slice.fill}
+                            stroke="white"
+                            strokeWidth="2"
+                          />
+                        );
+                      });
+                    })()}
+                  </svg>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {pieChartData.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: item.fill }}
+                        />
+                        <span>{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-muted-foreground">
+                          {((item.value / total) * 100).toFixed(1)}%
+                        </span>
+                        <span className="font-medium">{formatCurrency(item.value)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
           <Button variant="outline" size="sm" onClick={onAddInvestment}>
             Add Investment
           </Button>
@@ -603,6 +719,16 @@ export function InvestmentsList({
         </div>
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="investments" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="investments">
+              {uniqueCount} investments - {formatCurrency(total)}
+            </TabsTrigger>
+            <TabsTrigger value="news">News</TabsTrigger>
+            <TabsTrigger value="insights">Insights</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="investments" className="mt-4">
         <div className="space-y-2">
           {groupedInvestments.map((group) => {
             const isExpanded = expandedGroups.has(group.name.toLowerCase());
@@ -756,6 +882,20 @@ export function InvestmentsList({
             );
           })}
         </div>
+          </TabsContent>
+
+          <TabsContent value="news" className="mt-4">
+            <InvestmentNews tickers={tickers} />
+          </TabsContent>
+
+          <TabsContent value="insights" className="mt-4">
+            <InvestmentInsights
+              holdings={holdings}
+              totalValue={total}
+              userId={dbUserId || ""}
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       {/* Edit Dialog */}
