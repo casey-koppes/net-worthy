@@ -99,11 +99,14 @@ export function NetWorthCard({
           <CardDescription>Your total portfolio value</CardDescription>
         </div>
         <div className="flex items-center gap-4">
-          <PeriodSelector
-            value={period.preset}
-            onChange={handlePeriodChange}
-            onCustomDateChange={handleCustomDateChange}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <PeriodSelector
+              value={period.preset}
+              onChange={handlePeriodChange}
+              onCustomDateChange={handleCustomDateChange}
+            />
+            <span className="text-xs text-muted-foreground">Performance Period</span>
+          </div>
           {isSyncing && (
             <Badge variant="secondary" className="animate-pulse">
               Syncing...
