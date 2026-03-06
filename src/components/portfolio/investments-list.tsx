@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { getPeriodLabel } from "@/lib/utils/period-utils";
@@ -91,6 +91,13 @@ function getCategoryColor(category: string): string {
     default:
       return "bg-gray-100 text-gray-800";
   }
+}
+
+// Generate Google Finance URL for a ticker
+function getGoogleFinanceUrl(ticker: string | null): string | null {
+  if (!ticker) return null;
+  // Google Finance URL format - it auto-detects the exchange
+  return `https://www.google.com/finance/quote/${ticker.toUpperCase()}`;
 }
 
 // Map ticker symbols to Brandfetch brand IDs
@@ -545,7 +552,21 @@ export function InvestmentsList({
                   <div className="flex items-center gap-3">
                     <StockLogo ticker={group.ticker} name={group.name} />
                     <div className="flex flex-col">
-                      <span className="font-medium">{group.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{group.name}</span>
+                        {group.ticker && (
+                          <a
+                            href={getGoogleFinanceUrl(group.ticker) || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-muted-foreground hover:text-primary transition-colors"
+                            title={`View ${group.ticker} on Google Finance`}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                       <span className="text-sm text-muted-foreground">
                         {group.ticker || ""}{group.ticker && group.totalShares > 0 ? " - " : ""}
                         {group.totalShares > 0 ? `${group.totalShares} shares` : ""}
