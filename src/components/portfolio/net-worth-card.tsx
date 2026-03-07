@@ -120,24 +120,26 @@ export function NetWorthCard({
             <p className="text-4xl font-bold tracking-tight">
               {formatCurrency(netWorth)}
             </p>
-            {!isLoadingPerformance && performance?.totals && (
-              <PerformanceBadge
-                value={performance.totals.netWorthChange}
-                dollarChange={
-                  performance.totals.currentNetWorth - (performance.totals.startNetWorth ?? 0)
-                }
-                inline
-                className="text-lg [&_.text-xs]:text-lg"
-              />
-            )}
-            {isLoadingPerformance && (
-              <span className="text-sm text-muted-foreground animate-pulse">
-                Loading...
-              </span>
-            )}
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {!isLoadingPerformance && performance?.totals && (
+                <PerformanceBadge
+                  value={performance.totals.netWorthChange}
+                  dollarChange={
+                    performance.totals.currentNetWorth - (performance.totals.startNetWorth ?? 0)
+                  }
+                  inline
+                  className="text-lg [&_.text-xs]:text-lg"
+                />
+              )}
+              {isLoadingPerformance && (
+                <span className="text-sm text-muted-foreground animate-pulse">
+                  Loading...
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-8 mr-[50px]">
               <div className="space-y-1 text-right mr-[25px]">
                 <p className="text-sm text-muted-foreground">Total Assets</p>
