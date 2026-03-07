@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, ExternalLink, PieChart, X } from "lucide-react";
+import { ChevronDown, ChevronUp, ExternalLink, PieChart, X, Plus, Minus } from "lucide-react";
 import { InvestmentNews } from "./investment-news";
 import { InvestmentInsights } from "./investment-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -37,6 +37,13 @@ interface Investment {
   category: string;
   isAsset: boolean;
   createdAt?: string;
+  metadata?: {
+    action?: string;
+    investmentType?: string;
+    ticker?: string;
+    shares?: number;
+    pricePerShare?: number;
+  };
 }
 
 
@@ -697,28 +704,50 @@ export function InvestmentsList({
                   <div className="border-t bg-muted/10 p-3 space-y-2">
                     {group.items.map((item) => {
                       const { shares } = parseDescription(item.description);
+                      const action = item.metadata?.action || "buy";
+                      const isBuy = action === "buy";
+                      const displayShares = item.metadata?.shares || shares;
+
                       return (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                          className={`flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors ${
+                            isBuy ? "border-l-4 border-l-green-500" : "border-l-4 border-l-red-500"
+                          }`}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             setEditingAsset(item);
                           }}
                           title="Double-click to edit"
                         >
-                          <div className="flex flex-col">
-                            <span className="text-muted-foreground">
-                              {shares > 0 ? `${shares} shares` : item.description || "Manual entry"}
-                            </span>
-                            {item.createdAt && (
+                          <div className="flex items-center gap-3">
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                              isBuy ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                            }`}>
+                              {isBuy ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                            </div>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs ${
+                                    isBuy
+                                      ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                      : "bg-red-100 text-red-700 hover:bg-red-100"
+                                  }`}
+                                >
+                                  {isBuy ? "Buy" : "Sell"}
+                                </Badge>
+                              </div>
                               <span className="text-xs text-muted-foreground">
-                                Added {formatTimeAgo(item.createdAt)}
+                                {displayShares > 0 ? `${displayShares} shares` : ""}
+                                {displayShares > 0 && item.createdAt ? " • " : ""}
+                                {item.createdAt ? formatTimeAgo(item.createdAt) : ""}
                               </span>
-                            )}
+                            </div>
                           </div>
-                          <span className="font-medium">
-                            {formatCurrency(item.value)}
+                          <span className={`font-medium ${isBuy ? "text-green-600" : "text-red-600"}`}>
+                            {isBuy ? "+" : "-"}{formatCurrency(item.value)}
                           </span>
                         </div>
                       );

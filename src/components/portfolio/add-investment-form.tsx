@@ -36,6 +36,7 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
 
   const [formData, setFormData] = useState({
     type: "asset",
+    action: "buy",
     category: "",
     name: "",
     shares: "",
@@ -123,6 +124,7 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
           isAsset: formData.type === "asset",
           // Store additional metadata
           metadata: {
+            action: formData.action,
             investmentType: formData.category,
             ticker: formData.ticker || null,
             shares: formData.shares ? parseFloat(formData.shares) : null,
@@ -139,6 +141,7 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
       toast.success("Investment added successfully!");
       setFormData({
         type: "asset",
+        action: "buy",
         category: "",
         name: "",
         shares: "",
@@ -157,7 +160,23 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="action">Action *</Label>
+          <Select
+            value={formData.action}
+            onValueChange={(value) => setFormData({ ...formData, action: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="buy">Buy</SelectItem>
+              <SelectItem value="sell">Sell</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="type">Type *</Label>
           <Select
