@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 // POST - Add a new manual asset
 export async function POST(request: NextRequest) {
   try {
-    const { userId, category, name, value, description, isAsset, purchasePrice, purchaseDate, metadata } =
+    const { userId, category, name, value, description, isAsset, purchasePrice, purchaseDate, metadata, createdAt } =
       await request.json();
 
     if (!userId || !category || !name || value === undefined) {
@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
         isAsset: isAsset ?? true,
         visibility: "private",
         metadata: metadata || null,
+        ...(createdAt ? { createdAt: new Date(createdAt) } : {}),
       })
       .returning();
 

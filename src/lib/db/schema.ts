@@ -30,6 +30,7 @@ export const assetCategoryEnum = pgEnum("asset_category", [
   "real_estate",
   "vehicle",
   "motorcycle",
+  "gold",
   "other",
 ]);
 

@@ -125,7 +125,7 @@ export function AddBankAccountForm({ onSuccess, onConnectPlaid }: AddBankAccount
             </p>
           </div>
           <PlaidLinkButton
-            className="w-full"
+            className="w-full bg-purple-600 hover:bg-purple-700"
             onSuccess={() => {
               onConnectPlaid?.();
               onSuccess?.();
@@ -211,8 +211,8 @@ export function AddBankAccountForm({ onSuccess, onConnectPlaid }: AddBankAccount
           </div>
         </div>
 
-        <Button type="submit" variant="outline" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Adding..." : "Add Bank Account Manually"}
+        <Button type="submit" variant="outline" className="w-full border-purple-600 text-purple-600 hover:bg-purple-50 hover:text-purple-700" disabled={isSubmitting}>
+          {isSubmitting ? "Adding..." : "Add Bank Account"}
         </Button>
       </form>
     </div>

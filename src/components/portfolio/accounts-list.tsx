@@ -17,12 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2 } from "lucide-react";
+import { Building2, Zap } from "lucide-react";
 import { useVisibleAccounts, usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { PerformanceBadge } from "./performance-badge";
 import { EditAssetForm, type EditableAsset } from "./edit-asset-form";
-import { PlaidLinkButton } from "./plaid-link-button";
 
 interface ManualBankAccount {
   id: string;
@@ -90,14 +89,12 @@ function getCategoryColor(category: string): string {
 }
 
 interface AccountsListProps {
-  onAddAccount?: () => void;
   onAddManualAccount?: () => void;
   refreshTrigger?: number;
   onTotalChange?: (total: number) => void;
 }
 
 export function AccountsList({
-  onAddAccount,
   onAddManualAccount,
   refreshTrigger = 0,
   onTotalChange,
@@ -234,14 +231,9 @@ export function AccountsList({
             <p className="text-muted-foreground mb-4">
               No bank accounts added yet.
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onAddManualAccount}>
-                Add Bank Account
-              </Button>
-              <PlaidLinkButton onSuccess={onAddAccount}>
-                Connect bank account
-              </PlaidLinkButton>
-            </div>
+            <Button variant="outline" onClick={onAddManualAccount}>
+              Add Bank Account
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -257,18 +249,9 @@ export function AccountsList({
             {accounts.length} account{accounts.length !== 1 ? "s" : ""}
           </CardDescription>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onAddManualAccount}>
-            Add Account
-          </Button>
-          <PlaidLinkButton
-            variant="outline"
-            size="sm"
-            onSuccess={onAddAccount}
-          >
-            Connect bank account
-          </PlaidLinkButton>
-        </div>
+        <Button variant="outline" size="sm" onClick={onAddManualAccount}>
+          Add Account
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
@@ -315,7 +298,12 @@ export function AccountsList({
                         </div>
                       )}
                       <div className="flex flex-col">
-                        <span className="font-medium">{account.name}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">{account.name}</span>
+                          {!isManual && (
+                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                          )}
+                        </div>
                         {account.institutionName && (
                           <span className="text-sm text-muted-foreground">
                             {account.institutionName}

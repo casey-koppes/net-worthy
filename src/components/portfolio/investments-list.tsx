@@ -43,6 +43,7 @@ interface Investment {
     ticker?: string;
     shares?: number;
     pricePerShare?: number;
+    purchasePrice?: number;
   };
 }
 
@@ -332,15 +333,17 @@ function getStockLogo(ticker: string | null, name: string): string | null {
 }
 
 // Stock Logo component with fallback
-function StockLogo({ ticker, name }: { ticker: string | null; name: string }) {
+function StockLogo({ ticker, name, size = "md" }: { ticker: string | null; name: string; size?: "sm" | "md" }) {
   const [imageError, setImageError] = useState(false);
   const logoUrl = getStockLogo(ticker, name);
 
   const fallbackInitials = (ticker || name.substring(0, 2)).toUpperCase().substring(0, 2);
+  const sizeClasses = size === "sm" ? "w-4 h-4" : "w-8 h-8";
+  const textSize = size === "sm" ? "text-[6px]" : "text-xs";
 
   if (!logoUrl || imageError) {
     return (
-      <div className="w-8 h-8 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+      <div className={`${sizeClasses} rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white ${textSize} font-bold`}>
         {fallbackInitials}
       </div>
     );
@@ -350,7 +353,7 @@ function StockLogo({ ticker, name }: { ticker: string | null; name: string }) {
     <img
       src={logoUrl}
       alt={ticker || name}
-      className="w-8 h-8 rounded-md object-contain bg-white"
+      className={`${sizeClasses} rounded-md object-contain bg-white`}
       onError={() => setImageError(true)}
     />
   );
@@ -449,6 +452,7 @@ export function InvestmentsList({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showReport, setShowReport] = useState(false);
   const [activityFilters, setActivityFilters] = useState<Record<string, "all" | "buy" | "sell">>({});
+  const [stockPrices, setStockPrices] = useState<Record<string, number>>({});
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
@@ -509,6 +513,37 @@ export function InvestmentsList({
     fetchInvestments();
   }, [fetchInvestments, refreshTrigger, localRefresh]);
 
+  // Fetch stock prices for all unique tickers
+  useEffect(() => {
+    async function fetchStockPrices() {
+      // Collect all unique tickers from investments
+      const tickers = new Set<string>();
+      for (const inv of investments) {
+        const ticker = inv.metadata?.ticker || parseDescription(inv.description).ticker;
+        if (ticker) tickers.add(ticker.toUpperCase());
+      }
+
+      // Fetch prices for each ticker
+      const prices: Record<string, number> = {};
+      for (const ticker of tickers) {
+        try {
+          const res = await fetch(`/api/stocks/quote?ticker=${ticker}`);
+          if (res.ok) {
+            const data = await res.json();
+            prices[ticker] = data.price;
+          }
+        } catch (error) {
+          console.error(`Failed to fetch price for ${ticker}:`, error);
+        }
+      }
+      setStockPrices(prices);
+    }
+
+    if (investments.length > 0) {
+      fetchStockPrices();
+    }
+  }, [investments]);
+
   const groupedInvestments = groupInvestments(investments);
   const total = investments
     .filter((i) => i.isAsset)
@@ -543,12 +578,9 @@ export function InvestmentsList({
             <p className="text-muted-foreground mb-4">
               No investments added yet.
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onAddInvestment}>
-                Add Investment
-              </Button>
-              <Button onClick={onConnectBrokerage}>Connect to financial institution</Button>
-            </div>
+            <Button variant="outline" onClick={onAddInvestment}>
+              Add Investment
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -595,9 +627,6 @@ export function InvestmentsList({
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={onAddInvestment}>
             Add Investment
-          </Button>
-          <Button variant="outline" size="sm" onClick={onConnectBrokerage}>
-            Connect to financial institution
           </Button>
           <Button
             variant={showReport ? "default" : "outline"}
@@ -737,44 +766,80 @@ export function InvestmentsList({
                           const isBuy = action === "buy";
                           const displayShares = item.metadata?.shares || shares;
 
+                          const { ticker } = parseDescription(item.description);
+                          const displayTicker = item.metadata?.ticker || ticker;
+
                           return (
-                            <div
-                              key={item.id}
-                              className={`flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors ${
-                                isBuy ? "border-l-4 border-l-green-500" : "border-l-4 border-l-red-500"
-                              }`}
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                setEditingAsset(item);
-                              }}
-                              title="Double-click to edit"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                                  isBuy ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                                }`}>
-                                  {isBuy ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                                </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {displayShares > 0 ? `${displayShares} shares` : ""}
-                                  {displayShares > 0 && item.createdAt ? " • " : ""}
-                                  {item.createdAt ? formatTimeAgo(item.createdAt) : ""}
-                                </span>
+                            <div key={item.id} className="flex items-center gap-2">
+                              {/* Icon outside the card */}
+                              <div className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${
+                                isBuy ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                              }`}>
+                                {isBuy ? <Plus className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                               </div>
-                              <div className="flex items-center gap-3">
-                                <Badge
-                                  variant="secondary"
-                                  className={`text-xs ${
-                                    isBuy
-                                      ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                      : "bg-red-100 text-red-700 hover:bg-red-100"
-                                  }`}
-                                >
-                                  {isBuy ? "Buy" : "Sell"}
-                                </Badge>
-                                <span className={`font-medium ${isBuy ? "text-green-600" : "text-red-600"}`}>
-                                  {isBuy ? "+" : "-"}{formatCurrency(item.value)}
-                                </span>
+                              {/* Activity card */}
+                              <div
+                                className="flex-1 flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingAsset(item);
+                                }}
+                                title="Double-click to edit"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-1">
+                                      <StockLogo ticker={displayTicker} name={item.name} size="sm" />
+                                      <span className="font-medium text-xs">{item.name}</span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">
+                                      {displayShares > 0 ? `${displayShares} shares` : ""}
+                                      {displayShares > 0 && item.createdAt ? " • " : ""}
+                                      {item.createdAt ? formatTimeAgo(item.createdAt) : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Badge
+                                    variant="secondary"
+                                    className={`text-xs ${
+                                      isBuy
+                                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                        : "bg-red-100 text-red-700 hover:bg-red-100"
+                                    }`}
+                                  >
+                                    {isBuy ? "Buy" : "Sell"}
+                                  </Badge>
+                                  <div className="flex flex-col items-end">
+                                    <span className="font-medium text-gray-600">
+                                      {formatCurrency(item.value)}
+                                    </span>
+                                    {isBuy && displayShares > 0 && (() => {
+                                      // Use stored pricePerShare if available, otherwise use fetched stock price
+                                      const pricePerShare = item.metadata?.pricePerShare || stockPrices[displayTicker?.toUpperCase() || ""];
+                                      if (!pricePerShare) return null;
+                                      const currentValue = pricePerShare * displayShares;
+                                      const costBasis = item.value;
+                                      const gainLoss = currentValue - costBasis;
+                                      if (gainLoss === 0) return null;
+                                      const isGain = gainLoss > 0;
+                                      const absAmount = Math.abs(gainLoss);
+                                      let dollarDisplay: string;
+                                      if (absAmount >= 1000000) {
+                                        dollarDisplay = `${(absAmount / 1000000).toFixed(2)}M`;
+                                      } else if (absAmount >= 1000) {
+                                        dollarDisplay = `${(absAmount / 1000).toFixed(2)}K`;
+                                      } else {
+                                        dollarDisplay = absAmount.toFixed(2);
+                                      }
+                                      return (
+                                        <span className={`text-xs ${isGain ? "text-green-600" : "text-red-600"}`}>
+                                          {isGain ? `(+$${dollarDisplay})` : `(-$${dollarDisplay})`}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           );
@@ -883,7 +948,7 @@ export function InvestmentsList({
 
       {/* Edit Dialog */}
       <Dialog open={!!editingAsset} onOpenChange={(open) => !open && setEditingAsset(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Investment</DialogTitle>
             <DialogDescription>

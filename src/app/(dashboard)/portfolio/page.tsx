@@ -139,7 +139,7 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-7xl mx-auto px-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Portfolio</h1>
@@ -229,7 +229,6 @@ export default function PortfolioPage() {
 
           <TabsContent value="all" className="space-y-6">
             <AccountsList
-              onAddAccount={handlePlaidSuccess}
               onAddManualAccount={() => setIsAddBankAccountOpen(true)}
               refreshTrigger={refreshTrigger}
               onTotalChange={handleBankAccountsTotalChange}
@@ -254,7 +253,6 @@ export default function PortfolioPage() {
 
           <TabsContent value="bank" className="space-y-6">
             <AccountsList
-              onAddAccount={handlePlaidSuccess}
               onAddManualAccount={() => setIsAddBankAccountOpen(true)}
               refreshTrigger={refreshTrigger}
               onTotalChange={handleBankAccountsTotalChange}
@@ -420,19 +418,25 @@ export default function PortfolioPage() {
 
       {/* Add Investment Dialog */}
       <Dialog open={isAddInvestmentOpen} onOpenChange={setIsAddInvestmentOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle>Add Investment</DialogTitle>
             <DialogDescription>
               Track stocks, 401k, IRA, and other investments
             </DialogDescription>
           </DialogHeader>
-          <AddInvestmentForm
-            onSuccess={() => {
-              setIsAddInvestmentOpen(false);
-              triggerRefresh();
-            }}
-          />
+          <div className="flex-1 overflow-y-auto px-6">
+            <AddInvestmentForm
+              onSuccess={() => {
+                setIsAddInvestmentOpen(false);
+                triggerRefresh();
+              }}
+              onConnectPlaid={() => {
+                setIsAddInvestmentOpen(false);
+                handlePlaidSuccess();
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>
