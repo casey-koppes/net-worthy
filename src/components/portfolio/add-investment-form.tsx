@@ -35,7 +35,6 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
   const [stockPrice, setStockPrice] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
-    type: "asset",
     action: "buy",
     category: "",
     name: "",
@@ -121,7 +120,7 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
           name: formData.name,
           description: description || `${INVESTMENT_CATEGORIES.find(c => c.value === formData.category)?.label || formData.category}`,
           value: value,
-          isAsset: formData.type === "asset",
+          isAsset: true,
           // Store additional metadata
           metadata: {
             action: formData.action,
@@ -140,7 +139,6 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
 
       toast.success("Investment added successfully!");
       setFormData({
-        type: "asset",
         action: "buy",
         category: "",
         name: "",
@@ -160,39 +158,7 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="action">Action *</Label>
-          <Select
-            value={formData.action}
-            onValueChange={(value) => setFormData({ ...formData, action: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="buy">Buy</SelectItem>
-              <SelectItem value="sell">Sell</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="type">Type *</Label>
-          <Select
-            value={formData.type}
-            onValueChange={(value) => setFormData({ ...formData, type: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="asset">Asset</SelectItem>
-              <SelectItem value="liability">Liability</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="category">Category *</Label>
           <Select
@@ -208,6 +174,22 @@ export function AddInvestmentForm({ onSuccess }: AddInvestmentFormProps) {
                   {cat.label}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="action">Action *</Label>
+          <Select
+            value={formData.action}
+            onValueChange={(value) => setFormData({ ...formData, action: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="buy">Buy</SelectItem>
+              <SelectItem value="sell">Sell</SelectItem>
             </SelectContent>
           </Select>
         </div>

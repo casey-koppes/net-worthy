@@ -448,6 +448,7 @@ export function InvestmentsList({
   const [localRefresh, setLocalRefresh] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showReport, setShowReport] = useState(false);
+  const [activityFilters, setActivityFilters] = useState<Record<string, "all" | "buy" | "sell">>({});
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
@@ -470,6 +471,12 @@ export function InvestmentsList({
       newExpanded.add(name);
     }
     setExpandedGroups(newExpanded);
+  };
+
+  const getActivityFilter = (groupName: string) => activityFilters[groupName.toLowerCase()] || "all";
+
+  const setActivityFilter = (groupName: string, filter: "all" | "buy" | "sell") => {
+    setActivityFilters(prev => ({ ...prev, [groupName.toLowerCase()]: filter }));
   };
 
   const fetchInvestments = useCallback(async () => {
@@ -701,33 +708,60 @@ export function InvestmentsList({
 
                 {/* Expanded content */}
                 {isExpanded && (
-                  <div className="border-t bg-muted/10 p-3 space-y-2">
-                    {group.items.map((item) => {
-                      const { shares } = parseDescription(item.description);
-                      const action = item.metadata?.action || "buy";
-                      const isBuy = action === "buy";
-                      const displayShares = item.metadata?.shares || shares;
+                  <div className="border-t bg-muted/10 p-3 space-y-3">
+                    {/* Activity Filter Toggle */}
+                    <Tabs
+                      value={getActivityFilter(group.name)}
+                      onValueChange={(value) => setActivityFilter(group.name, value as "all" | "buy" | "sell")}
+                      className="w-full"
+                    >
+                      <TabsList className="h-8">
+                        <TabsTrigger value="all" className="text-xs px-3">All</TabsTrigger>
+                        <TabsTrigger value="buy" className="text-xs px-3">Buy</TabsTrigger>
+                        <TabsTrigger value="sell" className="text-xs px-3">Sell</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
 
-                      return (
-                        <div
-                          key={item.id}
-                          className={`flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors ${
-                            isBuy ? "border-l-4 border-l-green-500" : "border-l-4 border-l-red-500"
-                          }`}
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            setEditingAsset(item);
-                          }}
-                          title="Double-click to edit"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                              isBuy ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
-                            }`}>
-                              {isBuy ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                            </div>
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2">
+                    {/* Filtered Activity Records */}
+                    <div className="space-y-2">
+                      {group.items
+                        .filter((item) => {
+                          const filter = getActivityFilter(group.name);
+                          if (filter === "all") return true;
+                          const action = item.metadata?.action || "buy";
+                          return action === filter;
+                        })
+                        .map((item) => {
+                          const { shares } = parseDescription(item.description);
+                          const action = item.metadata?.action || "buy";
+                          const isBuy = action === "buy";
+                          const displayShares = item.metadata?.shares || shares;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors ${
+                                isBuy ? "border-l-4 border-l-green-500" : "border-l-4 border-l-red-500"
+                              }`}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setEditingAsset(item);
+                              }}
+                              title="Double-click to edit"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                                  isBuy ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                                }`}>
+                                  {isBuy ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {displayShares > 0 ? `${displayShares} shares` : ""}
+                                  {displayShares > 0 && item.createdAt ? " • " : ""}
+                                  {item.createdAt ? formatTimeAgo(item.createdAt) : ""}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3">
                                 <Badge
                                   variant="secondary"
                                   className={`text-xs ${
@@ -738,20 +772,14 @@ export function InvestmentsList({
                                 >
                                   {isBuy ? "Buy" : "Sell"}
                                 </Badge>
+                                <span className={`font-medium ${isBuy ? "text-green-600" : "text-red-600"}`}>
+                                  {isBuy ? "+" : "-"}{formatCurrency(item.value)}
+                                </span>
                               </div>
-                              <span className="text-xs text-muted-foreground">
-                                {displayShares > 0 ? `${displayShares} shares` : ""}
-                                {displayShares > 0 && item.createdAt ? " • " : ""}
-                                {item.createdAt ? formatTimeAgo(item.createdAt) : ""}
-                              </span>
                             </div>
-                          </div>
-                          <span className={`font-medium ${isBuy ? "text-green-600" : "text-red-600"}`}>
-                            {isBuy ? "+" : "-"}{formatCurrency(item.value)}
-                          </span>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </div>
