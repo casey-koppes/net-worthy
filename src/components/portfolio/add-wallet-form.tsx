@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Wallet, Zap } from "lucide-react";
+import { Wallet, Zap, RefreshCw } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
 
@@ -28,17 +28,86 @@ interface AddWalletFormProps {
 }
 
 export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
+  // Wallet connection state
   const [chain, setChain] = useState<string>("");
   const [address, setAddress] = useState("");
-  const [label, setLabel] = useState("");
+
+  // Manual entry state
+  const [manualFormData, setManualFormData] = useState({
+    name: "",
+    ticker: "",
+    units: "",
+    action: "buy",
+    purchaseUnitPrice: "",
+    description: "",
+    purchaseDate: "",
+  });
+  const [cryptoPrice, setCryptoPrice] = useState<number | null>(null);
+  const [cryptoName, setCryptoName] = useState<string | null>(null);
+  const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [calculatedValue, setCalculatedValue] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { dbUserId } = useAuthStore();
 
-  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
-    e?.preventDefault();
-    if (!chain || !address) return;
+  // Calculate value when units or price changes
+  useEffect(() => {
+    const units = parseFloat(manualFormData.units);
+    const purchasePrice = parseFloat(manualFormData.purchaseUnitPrice);
 
+    // Use purchase price if provided, otherwise use fetched crypto price
+    const priceToUse = !isNaN(purchasePrice) && purchasePrice > 0 ? purchasePrice : cryptoPrice;
+
+    if (priceToUse && !isNaN(units) && units > 0) {
+      const value = (units * priceToUse).toFixed(2);
+      setCalculatedValue(value);
+    } else {
+      setCalculatedValue(null);
+    }
+  }, [cryptoPrice, manualFormData.units, manualFormData.purchaseUnitPrice]);
+
+  async function fetchCryptoPrice(ticker: string) {
+    if (!ticker) return;
+
+    setIsFetchingPrice(true);
+    try {
+      const res = await fetch(`/api/crypto/price?ticker=${ticker}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCryptoPrice(data.price);
+        setCryptoName(data.name);
+        toast.success(`Found ${ticker.toUpperCase()} at $${data.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      } else {
+        setCryptoPrice(null);
+        setCryptoName(null);
+        toast.error(`Could not find ticker: ${ticker}`);
+      }
+    } catch {
+      setCryptoPrice(null);
+      setCryptoName(null);
+      toast.error("Failed to fetch crypto price");
+    } finally {
+      setIsFetchingPrice(false);
+    }
+  }
+
+  function handleTickerBlur() {
+    if (manualFormData.ticker && manualFormData.ticker.length >= 1) {
+      fetchCryptoPrice(manualFormData.ticker);
+    }
+  }
+
+  const handleConnectWallet = () => {
+    if (!chain || !address) {
+      toast.error("Please select a blockchain and enter a wallet address");
+      return;
+    }
+    handleWalletSubmit();
+  };
+
+  const handleWalletSubmit = async () => {
     setIsLoading(true);
     setError(null);
 
@@ -52,7 +121,6 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
           userId: dbUserId,
           chain,
           address,
-          label: label || undefined,
         }),
       });
 
@@ -61,7 +129,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
         throw new Error(data.error || "Failed to add wallet");
       }
 
-      toast.success("Wallet added successfully!");
+      toast.success("Wallet connected successfully!");
       onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add wallet");
@@ -71,8 +139,83 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
     }
   };
 
-  const handleConnectWallet = () => {
-    toast.info("Wallet connection coming soon! Use manual entry for now.");
+  const handleManualSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault();
+
+    if (!manualFormData.name || !manualFormData.ticker || !manualFormData.units) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const units = parseFloat(manualFormData.units);
+    if (isNaN(units) || units <= 0) {
+      toast.error("Please enter a valid number of units");
+      return;
+    }
+
+    const value = calculatedValue ? parseFloat(calculatedValue) : 0;
+    if (value <= 0) {
+      toast.error("Unable to calculate value. Please check ticker and units.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/crypto/wallets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: dbUserId,
+          chain: "manual",
+          address: `manual-${Date.now()}`,
+          label: manualFormData.name,
+          manualValue: value,
+          metadata: {
+            action: manualFormData.action,
+            ticker: manualFormData.ticker.toUpperCase(),
+            units: units,
+            pricePerUnit: cryptoPrice,
+            purchaseUnitPrice: manualFormData.purchaseUnitPrice ? parseFloat(manualFormData.purchaseUnitPrice) : null,
+            cryptoName: cryptoName,
+            description: manualFormData.description || null,
+          },
+          createdAt: manualFormData.purchaseDate ? new Date(manualFormData.purchaseDate).toISOString() : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to add crypto");
+      }
+
+      toast.success("Crypto added successfully!");
+
+      // Reset form
+      setManualFormData({
+        name: "",
+        ticker: "",
+        units: "",
+        action: "buy",
+        purchaseUnitPrice: "",
+        description: "",
+        purchaseDate: "",
+      });
+      setCryptoPrice(null);
+      setCryptoName(null);
+      setShowMore(false);
+      setCalculatedValue(null);
+
+      onSuccess?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add crypto");
+      toast.error(err instanceof Error ? err.message : "Failed to add crypto");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -91,12 +234,46 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                 Securely connect your crypto wallet for automatic balance tracking
               </p>
             </div>
+
+            {/* Blockchain and Address fields in Connect section */}
+            <div className="w-full space-y-3 text-left">
+              <div className="space-y-2">
+                <Label htmlFor="chain">Blockchain</Label>
+                <Select value={chain} onValueChange={setChain}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select blockchain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_CHAINS.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Wallet Address</Label>
+                <Input
+                  id="address"
+                  placeholder="Enter public wallet address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Only enter your public address. Never share your private key.
+                </p>
+              </div>
+            </div>
+
             <Button
               className="w-full bg-[#6132de] hover:bg-[#5028c6]"
               onClick={handleConnectWallet}
+              disabled={isLoading || !chain || !address}
             >
               <Zap className="h-4 w-4 mr-2" />
-              Connect Crypto Wallet
+              {isLoading ? "Connecting..." : "Connect Crypto Wallet"}
             </Button>
           </div>
         </div>
@@ -114,46 +291,174 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
         </div>
 
         {/* Manual Entry Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleManualSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="chain">Blockchain *</Label>
-            <Select value={chain} onValueChange={setChain}>
+            <Label htmlFor="name">Name *</Label>
+            <Input
+              id="name"
+              placeholder="e.g., Bitcoin Holdings, ETH Savings"
+              value={manualFormData.name}
+              onChange={(e) => setManualFormData({ ...manualFormData, name: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="ticker">Crypto Ticker *</Label>
+              <Input
+                id="ticker"
+                placeholder="e.g., BTC, ETH"
+                value={manualFormData.ticker}
+                onChange={(e) => setManualFormData({ ...manualFormData, ticker: e.target.value.toUpperCase() })}
+                onBlur={handleTickerBlur}
+                className="uppercase"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="units">Number of Units *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="units"
+                  type="number"
+                  step="0.00000001"
+                  min="0"
+                  placeholder="e.g., 0.5"
+                  value={manualFormData.units}
+                  onChange={(e) => setManualFormData({ ...manualFormData, units: e.target.value })}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fetchCryptoPrice(manualFormData.ticker)}
+                  disabled={!manualFormData.ticker || isFetchingPrice}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isFetchingPrice ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="action">Action *</Label>
+            <Select
+              value={manualFormData.action}
+              onValueChange={(value) => setManualFormData({ ...manualFormData, action: value })}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select blockchain" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SUPPORTED_CHAINS.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Market Price Banner - shown when crypto price is available */}
+          {cryptoPrice && (
+            <div className="rounded-md bg-blue-50 border border-blue-200 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-800">Market price per {manualFormData.ticker || "unit"}</span>
+                <span className="text-sm font-semibold text-blue-800">
+                  ${cryptoPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              {manualFormData.units && parseFloat(manualFormData.units) > 0 && (
+                <div className="flex items-center justify-between border-t border-blue-200 pt-2">
+                  <span className="text-sm font-medium text-blue-800">Market Value ($)</span>
+                  <span className="text-sm font-semibold text-blue-800">
+                    ${(cryptoPrice * parseFloat(manualFormData.units)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Purchase Unit Price - optional override */}
           <div className="space-y-2">
-            <Label htmlFor="address">Wallet Address *</Label>
-            <Input
-              id="address"
-              placeholder="Enter public wallet address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              required
-            />
+            <Label htmlFor="purchaseUnitPrice">Purchase Unit Price ($)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                $
+              </span>
+              <Input
+                id="purchaseUnitPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                className="pl-7"
+                value={manualFormData.purchaseUnitPrice}
+                onChange={(e) => setManualFormData({ ...manualFormData, purchaseUnitPrice: e.target.value })}
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Only enter your public address. Never share your private key.
+              Optional. If set, Value will be calculated from this instead of market price.
             </p>
           </div>
 
+          {/* Calculated Value - read only */}
           <div className="space-y-2">
-            <Label htmlFor="label">Label (Optional)</Label>
-            <Input
-              id="label"
-              placeholder="e.g., Main Wallet, Hardware Wallet"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-            />
+            <Label htmlFor="value">Value ($)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                $
+              </span>
+              <Input
+                id="value"
+                type="text"
+                className="pl-7 bg-muted cursor-not-allowed"
+                value={calculatedValue ? parseFloat(calculatedValue).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
+                placeholder="Calculated from price x units"
+                readOnly
+                disabled
+              />
+            </div>
           </div>
+
+          {/* View more toggle */}
+          <button
+            type="button"
+            onClick={() => setShowMore(!showMore)}
+            className="text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline"
+          >
+            {showMore ? "view less" : "view more"}
+          </button>
+
+          {/* Additional fields shown when expanded */}
+          {showMore && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (optional)</Label>
+                <textarea
+                  id="description"
+                  placeholder="Additional notes about this crypto"
+                  value={manualFormData.description}
+                  onChange={(e) => setManualFormData({ ...manualFormData, description: e.target.value })}
+                  rows={2}
+                  className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="purchaseDate">Purchase Date (optional)</Label>
+                <Input
+                  id="purchaseDate"
+                  type="date"
+                  value={manualFormData.purchaseDate}
+                  onChange={(e) => setManualFormData({ ...manualFormData, purchaseDate: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  If set, the activity record will be sorted by this date
+                </p>
+              </div>
+            </>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
         </form>
@@ -165,10 +470,10 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
           type="button"
           variant="outline"
           className="w-full border-[#6132de] text-[#6132de] hover:bg-[#6132de]/10 hover:text-[#5028c6]"
-          disabled={isLoading || !chain || !address}
-          onClick={handleSubmit}
+          disabled={isLoading || !manualFormData.name || !manualFormData.ticker || !manualFormData.units || !calculatedValue}
+          onClick={handleManualSubmit}
         >
-          {isLoading ? "Adding..." : "Add Wallet"}
+          {isLoading ? "Adding..." : "Add Crypto"}
         </Button>
       </div>
     </div>

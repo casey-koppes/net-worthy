@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 // POST - Add a new wallet
 export async function POST(request: NextRequest) {
   try {
-    const { userId, chain, address, label } = await request.json();
+    const { userId, chain, address, label, manualValue, metadata, createdAt } = await request.json();
 
     if (!userId || !chain || !address) {
       return NextResponse.json(
@@ -67,17 +67,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate chain
-    if (!CHAIN_CONFIGS[chain]) {
+    const isManualEntry = chain === "manual";
+
+    // Validate chain for non-manual entries
+    if (!isManualEntry && !CHAIN_CONFIGS[chain]) {
       return NextResponse.json(
         { error: `Unsupported chain: ${chain}` },
         { status: 400 }
       );
     }
 
-    // Validate address format (basic validation)
+    // Validate address format (basic validation) - skip for manual entries
     const trimmedAddress = address.trim();
-    if (trimmedAddress.length < 20) {
+    if (!isManualEntry && trimmedAddress.length < 20) {
       return NextResponse.json(
         { error: "Invalid wallet address" },
         { status: 400 }
@@ -88,50 +90,66 @@ export async function POST(request: NextRequest) {
     let balance = 0;
     let balanceUsd = 0;
 
-    try {
-      const walletData = await fetchWalletData(chain, trimmedAddress);
-      balance = walletData.balance;
-      balanceUsd = walletData.balanceUsd;
-    } catch (err) {
-      console.error("Failed to fetch initial balance:", err);
-      // Continue with zero balance if fetch fails
+    if (isManualEntry) {
+      // For manual entries, use the provided value
+      balanceUsd = manualValue || 0;
+      balance = manualValue || 0;
+    } else {
+      try {
+        const walletData = await fetchWalletData(chain, trimmedAddress);
+        balance = walletData.balance;
+        balanceUsd = walletData.balanceUsd;
+      } catch (err) {
+        console.error("Failed to fetch initial balance:", err);
+        // Continue with zero balance if fetch fails
+      }
     }
 
     // Use mock DB if no DATABASE_URL
     if (useMockDb()) {
+      // For manual entries with units, use units as balance
+      const actualBalance = isManualEntry && metadata?.units ? metadata.units : balance;
+
       const wallet = mockDb.cryptoWallets.create({
         userId,
         chain,
         address: trimmedAddress,
         label: label || undefined,
-        balance,
+        balance: actualBalance,
         balanceUsd,
+        createdAt: createdAt || new Date().toISOString(),
       });
 
-      // Log activity
+      // Log activity with metadata
+      const activityMetadata = {
+        chain,
+        address: trimmedAddress,
+        label: label || null,
+        balanceUsd,
+        ...(metadata || {}),
+      };
+
       mockDb.activityLog.create({
         userId,
-        action: "wallet_added",
+        action: metadata?.action === "sell" ? "crypto_sold" : "wallet_added",
         entityType: "crypto_wallet",
         entityId: wallet.id,
-        metadata: {
-          chain,
-          address: trimmedAddress,
-          label: label || null,
-          balanceUsd,
-        },
+        metadata: activityMetadata,
+        createdAt: createdAt || new Date().toISOString(),
       });
 
       // Create unit snapshot for tracking
       const chainConfig = CHAIN_CONFIGS[chain];
+      const assetName = isManualEntry ? (metadata?.cryptoName || label || "Manual Crypto") : (chainConfig?.name || chain);
+      const assetSymbol = isManualEntry ? (metadata?.ticker || "USD") : (chainConfig?.symbol || chain.toUpperCase());
       mockDb.unitSnapshots.create({
         userId,
         assetId: wallet.id,
         assetType: "crypto",
-        assetName: chainConfig?.name || chain,
-        assetSymbol: chainConfig?.symbol || chain.toUpperCase(),
-        date: new Date().toISOString().split("T")[0],
-        units: balance,
+        assetName,
+        assetSymbol,
+        date: (createdAt ? new Date(createdAt) : new Date()).toISOString().split("T")[0],
+        units: actualBalance,
       });
 
       return NextResponse.json({
@@ -147,6 +165,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // For manual entries with units, use units as balance
+    const actualBalance = isManualEntry && metadata?.units ? metadata.units : balance;
+
     // Create wallet record
     const [wallet] = await db
       .insert(cryptoWallets)
@@ -155,25 +176,31 @@ export async function POST(request: NextRequest) {
         chain,
         address: trimmedAddress,
         label: label || null,
-        balanceEncrypted: encryptNumber(balance, userId),
+        balanceEncrypted: encryptNumber(actualBalance, userId),
         balanceUsdEncrypted: encryptNumber(balanceUsd, userId),
         visibility: "private",
         lastSynced: new Date(),
+        createdAt: createdAt ? new Date(createdAt) : new Date(),
       })
       .returning();
+
+    // Build activity metadata
+    const activityMetadata = {
+      chain,
+      address: trimmedAddress,
+      label: label || null,
+      balanceUsd,
+      ...(metadata || {}),
+    };
 
     // Log activity for real database
     await db.insert(activityLog).values({
       userId,
-      action: "wallet_added",
+      action: metadata?.action === "sell" ? "crypto_sold" : "wallet_added",
       entityType: "crypto_wallet",
       entityId: wallet.id,
-      metadata: {
-        chain,
-        address: trimmedAddress,
-        label: label || null,
-        balanceUsd,
-      },
+      metadata: activityMetadata,
+      createdAt: createdAt ? new Date(createdAt) : new Date(),
     });
 
     return NextResponse.json({

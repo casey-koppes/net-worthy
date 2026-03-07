@@ -43,6 +43,7 @@ interface GroupedWallets {
   totalBalance: number;
   totalBalanceUsd: number;
   wallets: CryptoWallet[];
+  isManual?: boolean;
 }
 
 function formatCurrency(amount: number): string {
@@ -68,6 +69,8 @@ function getChainLogo(chain: string): string | null {
       return "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png";
     case "polygon":
       return "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Polygon_Blockchain_Matic_Logo.svg/200px-Polygon_Blockchain_Matic_Logo.svg.png";
+    case "manual":
+      return null;
     default:
       return null;
   }
@@ -83,6 +86,8 @@ function getChainColor(chain: string): string {
       return "bg-purple-100 text-purple-800";
     case "polygon":
       return "bg-violet-100 text-violet-800";
+    case "manual":
+      return "bg-green-100 text-green-800";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -98,6 +103,8 @@ function getChainSymbol(chain: string): string {
       return "SOL";
     case "polygon":
       return "MATIC";
+    case "manual":
+      return "USD";
     default:
       return chain.toUpperCase();
   }
@@ -113,6 +120,8 @@ function getChainName(chain: string): string {
       return "Solana";
     case "polygon":
       return "Polygon";
+    case "manual":
+      return "Manual Entry";
     default:
       return chain;
   }
@@ -137,12 +146,14 @@ function formatTimeAgo(dateString: string): string {
 }
 
 
-// Group wallets by chain
+// Group wallets by chain (manual entries grouped by label)
 function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
   const groups = new Map<string, GroupedWallets>();
 
   for (const wallet of wallets) {
-    const key = wallet.chain.toLowerCase();
+    // For manual entries, group by label; for regular wallets, group by chain
+    const isManual = wallet.chain.toLowerCase() === "manual";
+    const key = isManual ? `manual-${(wallet.label || "Manual Entry").toLowerCase()}` : wallet.chain.toLowerCase();
 
     if (groups.has(key)) {
       const group = groups.get(key)!;
@@ -151,10 +162,11 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
       group.wallets.push(wallet);
     } else {
       groups.set(key, {
-        chain: wallet.chain,
+        chain: isManual ? (wallet.label || "Manual Entry") : wallet.chain,
         totalBalance: wallet.balance,
         totalBalanceUsd: wallet.balanceUsd,
         wallets: [wallet],
+        isManual,
       });
     }
   }
@@ -305,6 +317,7 @@ export function CryptoWalletsList({
           {groupedWallets.map((group) => {
             const isExpanded = expandedGroups.has(group.chain.toLowerCase());
             const hasMultipleWallets = group.wallets.length > 1;
+            const displayChain = group.isManual ? "manual" : group.chain;
 
             return (
               <div key={group.chain} className="rounded-lg border overflow-hidden">
@@ -314,24 +327,24 @@ export function CryptoWalletsList({
                   onClick={() => toggleGroup(group.chain.toLowerCase())}
                 >
                   <div className="flex items-center gap-3">
-                    {getChainLogo(group.chain) ? (
+                    {!group.isManual && getChainLogo(displayChain) ? (
                       <img
-                        src={getChainLogo(group.chain)!}
-                        alt={getChainSymbol(group.chain)}
+                        src={getChainLogo(displayChain)!}
+                        alt={getChainSymbol(displayChain)}
                         className="w-8 h-8 object-contain"
                       />
                     ) : (
-                      <Badge className={getChainColor(group.chain)}>
-                        {getChainSymbol(group.chain)}
+                      <Badge className={getChainColor(displayChain)}>
+                        {group.isManual ? "$" : getChainSymbol(displayChain)}
                       </Badge>
                     )}
                     <div className="flex flex-col">
-                      <span className="font-medium">{getChainName(group.chain)}</span>
+                      <span className="font-medium">{group.isManual ? group.chain : getChainName(displayChain)}</span>
                       <span className="text-sm text-muted-foreground">
-                        {formatCryptoBalance(group.totalBalance)} {getChainSymbol(group.chain)}
+                        {group.isManual ? "Manual crypto entry" : `${formatCryptoBalance(group.totalBalance)} ${getChainSymbol(displayChain)}`}
                         {hasMultipleWallets && (
                           <span className="ml-2 text-xs text-blue-600">
-                            ({group.wallets.length} wallets)
+                            ({group.wallets.length} {group.isManual ? "entries" : "wallets"})
                           </span>
                         )}
                       </span>
@@ -357,7 +370,9 @@ export function CryptoWalletsList({
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="border-t bg-muted/10 p-3 space-y-2">
-                    {group.wallets.map((wallet) => (
+                    {group.wallets.map((wallet) => {
+                      const isWalletManual = wallet.chain.toLowerCase() === "manual";
+                      return (
                       <div key={wallet.id} className="flex items-center gap-2">
                         {/* Icon outside the card */}
                         <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 bg-green-100 text-green-600">
@@ -375,23 +390,23 @@ export function CryptoWalletsList({
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
-                                {getChainLogo(wallet.chain) ? (
+                                {!isWalletManual && getChainLogo(wallet.chain) ? (
                                   <img
                                     src={getChainLogo(wallet.chain)!}
                                     alt={getChainSymbol(wallet.chain)}
                                     className="w-4 h-4 object-contain"
                                   />
                                 ) : (
-                                  <div className="w-4 h-4 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[6px] font-bold">
-                                    {getChainSymbol(wallet.chain).substring(0, 2)}
+                                  <div className={`w-4 h-4 rounded-md ${isWalletManual ? "bg-green-500" : "bg-gradient-to-br from-blue-500 to-purple-600"} flex items-center justify-center text-white text-[6px] font-bold`}>
+                                    {isWalletManual ? "$" : getChainSymbol(wallet.chain).substring(0, 2)}
                                   </div>
                                 )}
                                 <span className="font-medium text-xs">
-                                  {wallet.label || shortenAddress(wallet.address)}
+                                  {wallet.label || (isWalletManual ? "Manual entry" : shortenAddress(wallet.address))}
                                 </span>
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {formatCryptoBalance(wallet.balance)} {getChainSymbol(wallet.chain)}
+                                {isWalletManual ? "Manual entry" : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
                                 {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
                               </span>
                             </div>
@@ -411,7 +426,8 @@ export function CryptoWalletsList({
                           </div>
                         </div>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
               </div>
