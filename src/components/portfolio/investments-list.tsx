@@ -628,6 +628,12 @@ export function InvestmentsList({
           <CardDescription>Track your investment portfolio</CardDescription>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onAddInvestment}>
+            Add Investment
+          </Button>
+          <Button variant="outline" size="sm" onClick={onConnectBrokerage}>
+            Connect via Plaid
+          </Button>
           <Button
             variant={showReport ? "default" : "outline"}
             size="icon"
@@ -635,12 +641,6 @@ export function InvestmentsList({
             title="View allocation report"
           >
             <PieChart className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={onAddInvestment}>
-            Add Investment
-          </Button>
-          <Button variant="outline" size="sm" onClick={onConnectBrokerage}>
-            Connect via Plaid
           </Button>
         </div>
       </CardHeader>
