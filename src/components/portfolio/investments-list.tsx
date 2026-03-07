@@ -540,7 +540,7 @@ export function InvestmentsList({
               <Button variant="outline" onClick={onAddInvestment}>
                 Add Investment
               </Button>
-              <Button onClick={onConnectBrokerage}>Connect via Plaid</Button>
+              <Button onClick={onConnectBrokerage}>Connect to financial institution</Button>
             </div>
           </div>
         </CardContent>
@@ -590,7 +590,7 @@ export function InvestmentsList({
             Add Investment
           </Button>
           <Button variant="outline" size="sm" onClick={onConnectBrokerage}>
-            Connect via Plaid
+            Connect to financial institution
           </Button>
           <Button
             variant={showReport ? "default" : "outline"}
