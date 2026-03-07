@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/select";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
+import { PlaidLinkButton } from "./plaid-link-button";
 
 interface AddBankAccountFormProps {
   onSuccess?: () => void;
+  onConnectPlaid?: () => void;
 }
 
 const ACCOUNT_TYPES = [
@@ -26,7 +28,7 @@ const ACCOUNT_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-export function AddBankAccountForm({ onSuccess }: AddBankAccountFormProps) {
+export function AddBankAccountForm({ onSuccess, onConnectPlaid }: AddBankAccountFormProps) {
   const { dbUserId } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -156,9 +158,20 @@ export function AddBankAccountForm({ onSuccess }: AddBankAccountFormProps) {
         </div>
       </div>
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Adding..." : "Add Bank Account"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" className="flex-1" disabled={isSubmitting}>
+          {isSubmitting ? "Adding..." : "Add Bank Account"}
+        </Button>
+        <PlaidLinkButton
+          variant="outline"
+          onSuccess={() => {
+            onConnectPlaid?.();
+            onSuccess?.();
+          }}
+        >
+          Connect bank account
+        </PlaidLinkButton>
+      </div>
     </form>
   );
 }

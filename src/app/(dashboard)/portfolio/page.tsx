@@ -410,6 +410,10 @@ export default function PortfolioPage() {
               setIsAddBankAccountOpen(false);
               triggerRefresh();
             }}
+            onConnectPlaid={() => {
+              setIsAddBankAccountOpen(false);
+              handlePlaidSuccess();
+            }}
           />
         </DialogContent>
       </Dialog>
