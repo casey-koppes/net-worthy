@@ -136,8 +136,8 @@ export function NetWorthCard({
           </div>
 
           <div className="flex justify-end">
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-1 text-right">
+            <div className="grid grid-cols-2 gap-8 mr-[50px]">
+              <div className="space-y-1 text-right mr-[25px]">
                 <p className="text-sm text-muted-foreground">Total Assets</p>
                 <p className="text-xl font-semibold text-green-600">
                   {formatCurrency(totalAssets)}
@@ -154,7 +154,7 @@ export function NetWorthCard({
                   />
                 )}
               </div>
-              <div className="space-y-1 text-right">
+              <div className="space-y-1 text-right ml-[25px]">
                 <p className="text-sm text-muted-foreground">Total Liabilities</p>
                 <p className="text-xl font-semibold text-red-600">
                   {formatCurrency(totalLiabilities)}
