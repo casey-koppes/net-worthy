@@ -126,6 +126,7 @@ export function NetWorthCard({
                 dollarChange={
                   performance.totals.currentNetWorth - (performance.totals.startNetWorth ?? 0)
                 }
+                inline
                 className="text-lg [&_.text-xs]:text-lg"
               />
             )}
