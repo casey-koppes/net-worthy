@@ -104,8 +104,8 @@ export async function GET(request: NextRequest) {
 }
 
 async function calculateRealPerformance(userId: string, startDate: string) {
-  // Fetch all current portfolio items
-  const [dbManualAssets, dbCryptoWallets, dbAccounts] = await Promise.all([
+  // Fetch all current portfolio items and historical snapshots
+  const [dbManualAssets, dbCryptoWallets, dbAccounts, historicalSnapshots] = await Promise.all([
     db.query.manualAssets.findMany({
       where: eq(manualAssets.userId, userId),
     }),
@@ -115,7 +115,25 @@ async function calculateRealPerformance(userId: string, startDate: string) {
     db.query.accounts.findMany({
       where: eq(accounts.userId, userId),
     }),
+    // Get the most recent snapshot on or before the start date for each item
+    db.query.itemValueSnapshots.findMany({
+      where: and(
+        eq(itemValueSnapshots.userId, userId),
+        lte(itemValueSnapshots.date, startDate)
+      ),
+      orderBy: [desc(itemValueSnapshots.date)],
+    }),
   ]);
+
+  // Build a map of itemId -> historical value (use most recent snapshot before startDate)
+  const historicalValueMap = new Map<string, number>();
+  for (const snapshot of historicalSnapshots) {
+    // Only keep the first (most recent) snapshot for each item
+    if (!historicalValueMap.has(snapshot.itemId)) {
+      const value = decryptNumber(snapshot.valueEncrypted, userId);
+      historicalValueMap.set(snapshot.itemId, value);
+    }
+  }
 
   // Collect all tickers that need price lookups
   const tickersToFetch: Map<string, { shares: number; assetId: string }[]> = new Map();
@@ -187,8 +205,9 @@ async function calculateRealPerformance(userId: string, startDate: string) {
   for (const asset of dbManualAssets) {
     const storedValue = decryptNumber(asset.valueEncrypted, userId);
     let currentValue = storedValue;
-    let startValue = storedValue;
-    let changePercent: number | null = 0;
+    // Use historical snapshot value if available, otherwise use current value
+    let startValue = historicalValueMap.get(asset.id) ?? storedValue;
+    let changePercent: number | null = calculatePerformance(currentValue, startValue);
     let ticker: string | undefined;
 
     // Check if this asset has ticker info (from metadata or description)
@@ -307,9 +326,11 @@ async function calculateRealPerformance(userId: string, startDate: string) {
     });
   }
 
-  // Process Plaid accounts (bank accounts don't have market-based performance)
+  // Process Plaid accounts - use historical snapshots for performance calculation
   for (const account of dbAccounts) {
     const currentValue = decryptNumber(account.balanceEncrypted, userId);
+    const startValue = historicalValueMap.get(account.id) ?? currentValue;
+    const changePercent = calculatePerformance(currentValue, startValue);
 
     performanceItems.push({
       id: account.id,
@@ -317,8 +338,8 @@ async function calculateRealPerformance(userId: string, startDate: string) {
       name: account.name,
       category: account.category,
       currentValue,
-      startValue: currentValue,
-      changePercent: 0, // Bank accounts don't have market performance
+      startValue,
+      changePercent,
     });
   }
 
