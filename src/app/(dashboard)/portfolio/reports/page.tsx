@@ -473,27 +473,14 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               {performanceTotals?.netWorthChange !== null && performanceTotals?.netWorthChange !== undefined ? (
-                <div className="space-y-1">
-                  <p
-                    className={`text-2xl font-bold ${
-                      performanceTotals.netWorthChange >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {performanceTotals.netWorthChange >= 0 ? "+" : ""}
-                    {performanceTotals.netWorthChange.toFixed(2)}%
-                  </p>
-                  <p
-                    className={`text-sm ${
-                      (performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)) >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)) >= 0
-                      ? `(+$${formatDollarChange(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0))})`
-                      : `(-$${formatDollarChange(Math.abs(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)))})`}
-                  </p>
-                </div>
+                <p
+                  className={`text-2xl font-bold ${
+                    performanceTotals.netWorthChange >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {performanceTotals.netWorthChange >= 0 ? "+" : ""}
+                  {performanceTotals.netWorthChange.toFixed(2)}%
+                </p>
               ) : (
                 <p
                   className={`text-2xl font-bold ${
