@@ -84,6 +84,16 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+function formatDollarChange(amount: number): string {
+  const absAmount = Math.abs(amount);
+  if (absAmount >= 1000000) {
+    return `${(absAmount / 1000000).toFixed(2)}M`;
+  } else if (absAmount >= 1000) {
+    return `${(absAmount / 1000).toFixed(2)}K`;
+  }
+  return absAmount.toFixed(2);
+}
+
 interface ManualAssetItem {
   id: string;
   category: string;
@@ -463,14 +473,27 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               {performanceTotals?.netWorthChange !== null && performanceTotals?.netWorthChange !== undefined ? (
-                <p
-                  className={`text-2xl font-bold ${
-                    performanceTotals.netWorthChange >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {performanceTotals.netWorthChange >= 0 ? "+" : ""}
-                  {performanceTotals.netWorthChange.toFixed(2)}%
-                </p>
+                <div className="space-y-1">
+                  <p
+                    className={`text-2xl font-bold ${
+                      performanceTotals.netWorthChange >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {performanceTotals.netWorthChange >= 0 ? "+" : ""}
+                    {performanceTotals.netWorthChange.toFixed(2)}%
+                  </p>
+                  <p
+                    className={`text-sm ${
+                      (performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)) >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)) >= 0
+                      ? `(+$${formatDollarChange(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0))})`
+                      : `(-$${formatDollarChange(Math.abs(performanceTotals.currentNetWorth - (performanceTotals.startNetWorth ?? 0)))})`}
+                  </p>
+                </div>
               ) : (
                 <p
                   className={`text-2xl font-bold ${
