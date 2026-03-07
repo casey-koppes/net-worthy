@@ -293,7 +293,7 @@ export default function PortfolioPage() {
             <TabsTrigger value="all">All Liabilities</TabsTrigger>
             <TabsTrigger value="credit">Credit</TabsTrigger>
             <TabsTrigger value="loans">Loans</TabsTrigger>
-            <TabsTrigger value="other">Other</TabsTrigger>
+            <TabsTrigger value="other">Other Liabilities</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="space-y-6">
