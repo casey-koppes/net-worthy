@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
       isHidden: wallet.isHidden,
       visibility: wallet.visibility,
       lastSynced: wallet.lastSynced,
+      metadata: (wallet as { metadata?: Record<string, unknown> | null }).metadata || null,
+      createdAt: wallet.createdAt,
     }));
 
     return NextResponse.json({ wallets: decryptedWallets });
@@ -117,6 +119,7 @@ export async function POST(request: NextRequest) {
         label: label || undefined,
         balance: actualBalance,
         balanceUsd,
+        metadata: metadata || null,
         createdAt: createdAt || new Date().toISOString(),
       });
 

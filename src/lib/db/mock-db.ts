@@ -67,6 +67,7 @@ interface MockCryptoWallet {
   isHidden: boolean;
   visibility: "private" | "friends" | "public";
   lastSynced: string;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -445,6 +446,8 @@ export const mockDb = {
       label?: string;
       balance: number;
       balanceUsd: number;
+      metadata?: Record<string, unknown> | null;
+      createdAt?: string;
     }): MockCryptoWallet => {
       const data = getData();
       if (!data.cryptoWallets) data.cryptoWallets = {};
@@ -460,7 +463,8 @@ export const mockDb = {
         isHidden: false,
         visibility: "private",
         lastSynced: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
+        metadata: input.metadata || null,
+        createdAt: input.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 

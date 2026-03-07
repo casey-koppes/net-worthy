@@ -35,6 +35,15 @@ interface CryptoWallet {
   visibility?: string;
   lastSynced?: string;
   createdAt?: string;
+  metadata?: {
+    action?: string;
+    ticker?: string;
+    units?: number;
+    pricePerUnit?: number;
+    purchaseUnitPrice?: number;
+    cryptoName?: string;
+    description?: string;
+  } | null;
 }
 
 
@@ -155,16 +164,24 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
     const isManual = wallet.chain.toLowerCase() === "manual";
     const key = isManual ? `manual-${(wallet.label || "Manual Entry").toLowerCase()}` : wallet.chain.toLowerCase();
 
+    // Determine if this is a buy or sell action
+    const action = wallet.metadata?.action || "buy";
+    const isBuy = action === "buy";
+
+    // Calculate value contribution: Buy adds, Sell subtracts
+    const balanceContribution = isBuy ? wallet.balance : -wallet.balance;
+    const balanceUsdContribution = isBuy ? wallet.balanceUsd : -wallet.balanceUsd;
+
     if (groups.has(key)) {
       const group = groups.get(key)!;
-      group.totalBalance += wallet.balance;
-      group.totalBalanceUsd += wallet.balanceUsd;
+      group.totalBalance += balanceContribution;
+      group.totalBalanceUsd += balanceUsdContribution;
       group.wallets.push(wallet);
     } else {
       groups.set(key, {
         chain: isManual ? (wallet.label || "Manual Entry") : wallet.chain,
-        totalBalance: wallet.balance,
-        totalBalanceUsd: wallet.balanceUsd,
+        totalBalance: balanceContribution,
+        totalBalanceUsd: balanceUsdContribution,
         wallets: [wallet],
         isManual,
       });

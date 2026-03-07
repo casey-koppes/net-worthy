@@ -402,12 +402,18 @@ function groupInvestments(investments: Investment[]): GroupedInvestment[] {
   for (const investment of investments) {
     const key = investment.name.toLowerCase();
     const { ticker, shares } = parseDescription(investment.description);
+    const action = investment.metadata?.action || "buy";
+    const isBuy = action === "buy";
+
+    // Calculate value contribution: Buy adds, Sell subtracts
+    const valueContribution = isBuy ? investment.value : -investment.value;
+    const sharesContribution = isBuy ? shares : -shares;
 
     if (groups.has(key)) {
       const group = groups.get(key)!;
-      group.totalValue += investment.value;
-      group.totalShares += shares;
-      if (investment.purchasePrice) {
+      group.totalValue += valueContribution;
+      group.totalShares += sharesContribution;
+      if (investment.purchasePrice && isBuy) {
         group.totalCostBasis = (group.totalCostBasis || 0) + investment.purchasePrice;
       }
       group.items.push(investment);
@@ -417,9 +423,9 @@ function groupInvestments(investments: Investment[]): GroupedInvestment[] {
     } else {
       groups.set(key, {
         name: investment.name,
-        totalValue: investment.value,
-        totalShares: shares,
-        totalCostBasis: investment.purchasePrice,
+        totalValue: valueContribution,
+        totalShares: sharesContribution,
+        totalCostBasis: isBuy ? investment.purchasePrice : null,
         items: [investment],
         ticker,
       });
