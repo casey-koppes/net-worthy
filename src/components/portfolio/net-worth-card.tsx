@@ -120,12 +120,15 @@ export function NetWorthCard({
             <p className="text-4xl font-bold tracking-tight">
               {formatCurrency(netWorth)}
             </p>
+          </div>
+          <div className="flex items-baseline gap-3 text-left">
             {!isLoadingPerformance && performance?.totals && (
               <PerformanceBadge
                 value={performance.totals.netWorthChange}
                 dollarChange={
                   performance.totals.currentNetWorth - (performance.totals.startNetWorth ?? 0)
                 }
+                className="text-lg [&_.text-xs]:text-lg"
               />
             )}
             {isLoadingPerformance && (
