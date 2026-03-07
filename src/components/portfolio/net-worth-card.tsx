@@ -122,8 +122,9 @@ export function NetWorthCard({
             </p>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Performance Change</p>
               {!isLoadingPerformance && performance?.totals && (
                 <PerformanceBadge
                   value={performance.totals.netWorthChange}
