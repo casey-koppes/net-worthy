@@ -159,6 +159,15 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
     }
   }
 
+  // Sort wallets within each group by createdAt (newest first)
+  for (const group of groups.values()) {
+    group.wallets.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA; // Newest first
+    });
+  }
+
   return Array.from(groups.values()).sort((a, b) => b.totalBalanceUsd - a.totalBalanceUsd);
 }
 

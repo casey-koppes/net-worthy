@@ -102,6 +102,15 @@ function groupAssets(assets: ManualAsset[]): GroupedAsset[] {
     }
   }
 
+  // Sort items within each group by createdAt (newest first)
+  for (const group of groups.values()) {
+    group.items.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA; // Newest first
+    });
+  }
+
   return Array.from(groups.values()).sort((a, b) => b.totalValue - a.totalValue);
 }
 

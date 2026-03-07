@@ -342,19 +342,21 @@ export default function PortfolioPage() {
 
       {/* Add Wallet Dialog */}
       <Dialog open={isAddWalletOpen} onOpenChange={setIsAddWalletOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle>Add Crypto Wallet</DialogTitle>
             <DialogDescription>
-              Enter your public wallet address to track your crypto holdings
+              Track your cryptocurrency holdings
             </DialogDescription>
           </DialogHeader>
-          <AddWalletForm
-            onSuccess={() => {
-              setIsAddWalletOpen(false);
-              handleRefresh();
-            }}
-          />
+          <div className="flex-1 overflow-y-auto px-6">
+            <AddWalletForm
+              onSuccess={() => {
+                setIsAddWalletOpen(false);
+                handleRefresh();
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
