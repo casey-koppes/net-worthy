@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
@@ -38,14 +37,6 @@ interface CryptoWallet {
   createdAt?: string;
 }
 
-interface ActivityItem {
-  id: string;
-  action: string;
-  entityType: string | null;
-  entityId: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-}
 
 interface GroupedWallets {
   chain: string;
@@ -145,18 +136,6 @@ function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-function formatAction(action: string, metadata: Record<string, unknown> | null): string {
-  const balanceUsd = metadata?.balanceUsd as number | undefined;
-
-  switch (action) {
-    case "wallet_added":
-      return `Added${balanceUsd ? ` (${formatCurrency(balanceUsd)})` : ""}`;
-    case "wallet_removed":
-      return `Removed${balanceUsd ? ` (${formatCurrency(balanceUsd)})` : ""}`;
-    default:
-      return action.replace(/_/g, " ");
-  }
-}
 
 // Group wallets by chain
 function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
@@ -202,7 +181,6 @@ export function CryptoWalletsList({
   const [editingWallet, setEditingWallet] = useState<EditableCryptoWallet | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [groupActivities, setGroupActivities] = useState<Map<string, ActivityItem[]>>(new Map());
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
@@ -223,29 +201,8 @@ export function CryptoWalletsList({
       newExpanded.delete(chain);
     } else {
       newExpanded.add(chain);
-      // Fetch activities for this chain if not already loaded
-      fetchChainActivities(chain);
     }
     setExpandedGroups(newExpanded);
-  };
-
-  const fetchChainActivities = async (chain: string) => {
-    if (!dbUserId || groupActivities.has(chain)) return;
-
-    try {
-      const res = await fetch(`/api/activity?userId=${dbUserId}&limit=100`);
-      if (res.ok) {
-        const data = await res.json();
-        const activities = (data.activities || []).filter(
-          (a: ActivityItem) =>
-            a.entityType === "crypto_wallet" &&
-            (a.metadata?.chain as string)?.toLowerCase() === chain.toLowerCase()
-        );
-        setGroupActivities((prev) => new Map(prev).set(chain, activities));
-      }
-    } catch (error) {
-      console.error("Failed to fetch activities:", error);
-    }
   };
 
   const fetchWallets = useCallback(async () => {
@@ -338,7 +295,6 @@ export function CryptoWalletsList({
         <div className="space-y-2">
           {groupedWallets.map((group) => {
             const isExpanded = expandedGroups.has(group.chain.toLowerCase());
-            const activities = groupActivities.get(group.chain.toLowerCase()) || [];
             const hasMultipleWallets = group.wallets.length > 1;
 
             return (
@@ -389,89 +345,37 @@ export function CryptoWalletsList({
                   </div>
                 </div>
 
-                {/* Expanded content with tabs */}
+                {/* Expanded content */}
                 {isExpanded && (
-                  <div className="border-t bg-muted/10 p-3">
-                    <Tabs defaultValue="wallets" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 h-8">
-                        <TabsTrigger value="wallets" className="text-xs">
-                          Wallets ({group.wallets.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="history" className="text-xs">
-                          History ({activities.length})
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="wallets" className="mt-3 space-y-2">
-                        {group.wallets.map((wallet) => (
-                          <div
-                            key={wallet.id}
-                            className="flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              setEditingWallet(wallet);
-                            }}
-                            title="Double-click to edit"
-                          >
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {wallet.label || shortenAddress(wallet.address)}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {shortenAddress(wallet.address)}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span className="font-medium">
-                                {formatCurrency(wallet.balanceUsd)}
-                              </span>
-                              <p className="text-xs text-muted-foreground">
-                                {formatCryptoBalance(wallet.balance)} {getChainSymbol(wallet.chain)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </TabsContent>
-
-                      <TabsContent value="history" className="mt-3 space-y-2">
-                        {activities.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No activity history yet
+                  <div className="border-t bg-muted/10 p-3 space-y-2">
+                    {group.wallets.map((wallet) => (
+                      <div
+                        key={wallet.id}
+                        className="flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingWallet(wallet);
+                        }}
+                        title="Double-click to edit"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {wallet.label || shortenAddress(wallet.address)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {shortenAddress(wallet.address)}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-medium">
+                            {formatCurrency(wallet.balanceUsd)}
+                          </span>
+                          <p className="text-xs text-muted-foreground">
+                            {formatCryptoBalance(wallet.balance)} {getChainSymbol(wallet.chain)}
                           </p>
-                        ) : (
-                          activities.map((activity) => (
-                            <div
-                              key={activity.id}
-                              className="flex items-center justify-between rounded-md border bg-background p-2 text-sm"
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-medium">
-                                  {formatAction(activity.action, activity.metadata)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {activity.metadata?.address
-                                    ? shortenAddress(activity.metadata.address as string)
-                                    : ""}{" "}
-                                  - {formatTimeAgo(activity.createdAt)}
-                                </span>
-                              </div>
-                              {activity.metadata?.balanceUsd !== undefined && (
-                                <span
-                                  className={`font-medium ${
-                                    activity.action === "wallet_added"
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {activity.action === "wallet_added" ? "+" : "-"}
-                                  {formatCurrency(activity.metadata.balanceUsd as number)}
-                                </span>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </TabsContent>
-                    </Tabs>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

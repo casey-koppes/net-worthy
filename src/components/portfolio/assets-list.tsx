@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
@@ -37,14 +36,6 @@ interface Asset {
   createdAt?: string;
 }
 
-interface ActivityItem {
-  id: string;
-  action: string;
-  entityType: string | null;
-  entityId: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-}
 
 interface GroupedAsset {
   name: string;
@@ -105,25 +96,6 @@ function formatTimeAgo(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-function formatAction(action: string, metadata: Record<string, unknown> | null): string {
-  const value = metadata?.value as number | undefined;
-  const valueChange = metadata?.valueChange as number | undefined;
-
-  switch (action) {
-    case "asset_added":
-      return `Added${value ? ` (${formatCurrency(value)})` : ""}`;
-    case "asset_removed":
-      return `Removed${value ? ` (${formatCurrency(value)})` : ""}`;
-    case "balance_changed":
-      if (valueChange !== undefined) {
-        const sign = valueChange >= 0 ? "+" : "";
-        return `Updated (${sign}${formatCurrency(valueChange)})`;
-      }
-      return "Updated";
-    default:
-      return action.replace(/_/g, " ");
-  }
-}
 
 // Group assets by name
 function groupAssets(assets: Asset[]): GroupedAsset[] {
@@ -172,7 +144,6 @@ export function AssetsList({
   const [editingAsset, setEditingAsset] = useState<EditableAsset | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [groupActivities, setGroupActivities] = useState<Map<string, ActivityItem[]>>(new Map());
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
@@ -193,29 +164,8 @@ export function AssetsList({
       newExpanded.delete(name);
     } else {
       newExpanded.add(name);
-      // Fetch activities for this group if not already loaded
-      fetchGroupActivities(name);
     }
     setExpandedGroups(newExpanded);
-  };
-
-  const fetchGroupActivities = async (name: string) => {
-    if (!dbUserId || groupActivities.has(name)) return;
-
-    try {
-      const res = await fetch(`/api/activity?userId=${dbUserId}&limit=100`);
-      if (res.ok) {
-        const data = await res.json();
-        const activities = (data.activities || []).filter(
-          (a: ActivityItem) =>
-            a.entityType === "manual_asset" &&
-            (a.metadata?.name as string)?.toLowerCase() === name.toLowerCase()
-        );
-        setGroupActivities((prev) => new Map(prev).set(name, activities));
-      }
-    } catch (error) {
-      console.error("Failed to fetch activities:", error);
-    }
   };
 
   const fetchAssets = useCallback(async () => {
@@ -304,7 +254,6 @@ export function AssetsList({
         <div className="space-y-2">
           {groupedAssets.map((group) => {
             const isExpanded = expandedGroups.has(group.name.toLowerCase());
-            const activities = groupActivities.get(group.name.toLowerCase()) || [];
             const hasMultipleItems = group.items.length > 1;
 
             return (
@@ -360,83 +309,34 @@ export function AssetsList({
                   </div>
                 </div>
 
-                {/* Expanded content with tabs */}
+                {/* Expanded content */}
                 {isExpanded && (
-                  <div className="border-t bg-muted/10 p-3">
-                    <Tabs defaultValue="records" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 h-8">
-                        <TabsTrigger value="records" className="text-xs">
-                          Records ({group.items.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="history" className="text-xs">
-                          History ({activities.length})
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="records" className="mt-3 space-y-2">
-                        {group.items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              setEditingAsset(item);
-                            }}
-                            title="Double-click to edit"
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-muted-foreground">
-                                {item.description || "Manual entry"}
-                              </span>
-                              {item.createdAt && (
-                                <span className="text-xs text-muted-foreground">
-                                  Added {formatTimeAgo(item.createdAt)}
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-medium">
-                              {formatCurrency(item.value)}
+                  <div className="border-t bg-muted/10 p-3 space-y-2">
+                    {group.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingAsset(item);
+                        }}
+                        title="Double-click to edit"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-muted-foreground">
+                            {item.description || "Manual entry"}
+                          </span>
+                          {item.createdAt && (
+                            <span className="text-xs text-muted-foreground">
+                              Added {formatTimeAgo(item.createdAt)}
                             </span>
-                          </div>
-                        ))}
-                      </TabsContent>
-
-                      <TabsContent value="history" className="mt-3 space-y-2">
-                        {activities.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No activity history yet
-                          </p>
-                        ) : (
-                          activities.map((activity) => (
-                            <div
-                              key={activity.id}
-                              className="flex items-center justify-between rounded-md border bg-background p-2 text-sm"
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-medium">
-                                  {formatAction(activity.action, activity.metadata)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatTimeAgo(activity.createdAt)}
-                                </span>
-                              </div>
-                              {activity.metadata?.valueChange !== undefined && (
-                                <span
-                                  className={`font-medium ${
-                                    (activity.metadata.valueChange as number) >= 0
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }`}
-                                >
-                                  {(activity.metadata.valueChange as number) >= 0 ? "+" : ""}
-                                  {formatCurrency(activity.metadata.valueChange as number)}
-                                </span>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </TabsContent>
-                    </Tabs>
+                          )}
+                        </div>
+                        <span className="font-medium">
+                          {formatCurrency(item.value)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
