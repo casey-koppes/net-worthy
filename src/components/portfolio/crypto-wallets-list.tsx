@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { getPeriodLabel } from "@/lib/utils/period-utils";
@@ -349,30 +349,57 @@ export function CryptoWalletsList({
                 {isExpanded && (
                   <div className="border-t bg-muted/10 p-3 space-y-2">
                     {group.wallets.map((wallet) => (
-                      <div
-                        key={wallet.id}
-                        className="flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          setEditingWallet(wallet);
-                        }}
-                        title="Double-click to edit"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {wallet.label || shortenAddress(wallet.address)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {shortenAddress(wallet.address)}
-                          </span>
+                      <div key={wallet.id} className="flex items-center gap-2">
+                        {/* Icon outside the card */}
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 bg-green-100 text-green-600">
+                          <Plus className="h-3 w-3" />
                         </div>
-                        <div className="text-right">
-                          <span className="font-medium">
-                            {formatCurrency(wallet.balanceUsd)}
-                          </span>
-                          <p className="text-xs text-muted-foreground">
-                            {formatCryptoBalance(wallet.balance)} {getChainSymbol(wallet.chain)}
-                          </p>
+                        {/* Activity card */}
+                        <div
+                          className="flex-1 flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setEditingWallet(wallet);
+                          }}
+                          title="Double-click to edit"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                {getChainLogo(wallet.chain) ? (
+                                  <img
+                                    src={getChainLogo(wallet.chain)!}
+                                    alt={getChainSymbol(wallet.chain)}
+                                    className="w-4 h-4 object-contain"
+                                  />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[6px] font-bold">
+                                    {getChainSymbol(wallet.chain).substring(0, 2)}
+                                  </div>
+                                )}
+                                <span className="font-medium text-xs">
+                                  {wallet.label || shortenAddress(wallet.address)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                {formatCryptoBalance(wallet.balance)} {getChainSymbol(wallet.chain)}
+                                {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-green-100 text-green-700 hover:bg-green-100"
+                            >
+                              Hold
+                            </Badge>
+                            <div className="flex flex-col items-end">
+                              <span className="font-medium text-gray-600">
+                                {formatCurrency(wallet.balanceUsd)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}

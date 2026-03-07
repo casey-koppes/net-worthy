@@ -212,8 +212,12 @@ export function ManualAssetsList({
                     className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors ${isExpanded ? "bg-muted/30" : ""}`}
                     onClick={() => toggleGroup(group.name.toLowerCase())}
                   >
-                    <div>
-                      <p className="font-medium">{group.name}</p>
+                    <div className="flex items-center gap-3">
+                      {type === "liabilities" && (
+                        <span className="text-2xl">💸</span>
+                      )}
+                      <div>
+                        <p className="font-medium">{group.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {categoryLabels[group.category] || group.category}
                         {hasMultipleItems && (
@@ -222,6 +226,7 @@ export function ManualAssetsList({
                           </span>
                         )}
                       </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">

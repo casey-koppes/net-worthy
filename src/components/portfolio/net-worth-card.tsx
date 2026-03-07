@@ -9,6 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { PeriodSelector } from "./period-selector";
@@ -105,7 +107,19 @@ export function NetWorthCard({
               onChange={handlePeriodChange}
               onCustomDateChange={handleCustomDateChange}
             />
-            <span className="text-xs text-muted-foreground">Performance Period</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Performance Period</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-5 w-5"
+                onClick={fetchPerformance}
+                disabled={isLoadingPerformance}
+                title="Refresh performance data"
+              >
+                <RefreshCw className={`h-3 w-3 ${isLoadingPerformance ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
           </div>
           {isSyncing && (
             <Badge variant="secondary" className="animate-pulse">
