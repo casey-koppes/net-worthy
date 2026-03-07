@@ -23,6 +23,7 @@ const ASSET_CATEGORIES = [
   { value: "vehicle", label: "Vehicle" },
   { value: "motorcycle", label: "Motorcycle" },
   { value: "real_estate", label: "Real Estate" },
+  { value: "gold", label: "Gold" },
   { value: "other", label: "Other" },
 ];
 
@@ -115,13 +116,23 @@ export function AddAssetForm({ onSuccess }: AddAssetFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="name">Name *</Label>
-        <AssetNameInput
-          id="name"
-          placeholder="e.g., 2022 Toyota Camry, Beach House"
-          value={formData.name}
-          onChange={(value) => setFormData({ ...formData, name: value })}
-          required
-        />
+        {formData.category === "other" ? (
+          <Input
+            id="name"
+            placeholder="e.g., Jewelry, Art Collection, Collectibles"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+        ) : (
+          <AssetNameInput
+            id="name"
+            placeholder="e.g., 2022 Toyota Camry, Beach House"
+            value={formData.name}
+            onChange={(value) => setFormData({ ...formData, name: value })}
+            required
+          />
+        )}
       </div>
 
       <div className="space-y-2">

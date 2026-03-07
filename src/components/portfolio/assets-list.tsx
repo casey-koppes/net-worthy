@@ -49,6 +49,7 @@ const categoryLabels: Record<string, string> = {
   vehicle: "Vehicle",
   motorcycle: "Motorcycle",
   real_estate: "Real Estate",
+  gold: "Gold",
   other: "Other",
 };
 
@@ -56,6 +57,7 @@ const categoryIcons: Record<string, string> = {
   vehicle: "🚘",
   motorcycle: "🏍️",
   real_estate: "🏠",
+  gold: "🥇",
   other: "📦",
 };
 
@@ -76,6 +78,8 @@ function getCategoryColor(category: string): string {
       return "bg-blue-100 text-blue-800";
     case "real_estate":
       return "bg-purple-100 text-purple-800";
+    case "gold":
+      return "bg-yellow-100 text-yellow-800";
     case "other":
       return "bg-gray-100 text-gray-800";
     default:
@@ -179,7 +183,7 @@ export function AssetsList({
         const assetItems = data.assets.filter(
           (asset: Asset) =>
             asset.isAsset &&
-            ["vehicle", "motorcycle", "real_estate", "other"].includes(asset.category)
+            ["vehicle", "motorcycle", "real_estate", "gold", "other"].includes(asset.category)
         );
         setAssets(assetItems);
 

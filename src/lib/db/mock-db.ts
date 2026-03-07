@@ -376,6 +376,7 @@ export const mockDb = {
       purchasePrice?: number;
       purchaseDate?: Date;
       isAsset?: boolean;
+      metadata?: Record<string, unknown> | null;
     }): MockManualAsset => {
       const data = getData();
       const id = generateId();
@@ -391,6 +392,7 @@ export const mockDb = {
         isAsset: input.isAsset ?? true,
         isHidden: false,
         visibility: "private",
+        metadata: input.metadata || null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

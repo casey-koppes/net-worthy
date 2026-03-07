@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 import { AssetNameInput } from "./asset-name-input";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
@@ -33,6 +34,14 @@ export interface EditableAsset {
   value: number;
   category: string;
   isAsset: boolean;
+  createdAt?: string;
+  metadata?: {
+    action?: string;
+    investmentType?: string;
+    ticker?: string;
+    shares?: number;
+    pricePerShare?: number;
+  } | null;
 }
 
 interface EditAssetFormProps {
@@ -63,11 +72,21 @@ export function EditAssetForm({ asset, onSuccess, onCancel }: EditAssetFormProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Format date for input (YYYY-MM-DD)
+  const formatDateForInput = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toISOString().split("T")[0];
+  };
+
   const [formData, setFormData] = useState({
     name: asset.name,
     value: asset.value.toString(),
     description: asset.description || "",
     category: asset.category,
+    action: asset.metadata?.action || "buy",
+    shares: asset.metadata?.shares?.toString() || "",
+    activityDate: formatDateForInput(asset.createdAt),
   });
 
   const categories = asset.isAsset ? ASSET_CATEGORIES : LIABILITY_CATEGORIES;
@@ -94,6 +113,15 @@ export function EditAssetForm({ asset, onSuccess, onCancel }: EditAssetFormProps
     setIsSubmitting(true);
 
     try {
+      // Build updated metadata for investments
+      const updatedMetadata = formData.category === "investment"
+        ? {
+            ...asset.metadata,
+            action: formData.action,
+            shares: formData.shares ? parseFloat(formData.shares) : null,
+          }
+        : asset.metadata;
+
       const res = await fetch("/api/portfolio/manual-assets", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -104,6 +132,8 @@ export function EditAssetForm({ asset, onSuccess, onCancel }: EditAssetFormProps
           value: value,
           description: formData.description || null,
           category: formData.category,
+          metadata: updatedMetadata,
+          createdAt: formData.activityDate ? new Date(formData.activityDate).toISOString() : undefined,
         }),
       });
 
@@ -169,6 +199,51 @@ export function EditAssetForm({ asset, onSuccess, onCancel }: EditAssetFormProps
         </Select>
       </div>
 
+      {formData.category === "investment" && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="action">Action</Label>
+              <Select
+                value={formData.action}
+                onValueChange={(value) => setFormData({ ...formData, action: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="buy">Buy</SelectItem>
+                  <SelectItem value="sell">Sell</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shares">Shares</Label>
+              <Input
+                id="shares"
+                type="number"
+                step="0.0001"
+                min="0"
+                placeholder="0"
+                value={formData.shares}
+                onChange={(e) => setFormData({ ...formData, shares: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="activityDate">Activity Date</Label>
+            <Input
+              id="activityDate"
+              type="date"
+              value={formData.activityDate}
+              onChange={(e) => setFormData({ ...formData, activityDate: e.target.value })}
+            />
+          </div>
+        </>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="name">Name *</Label>
         <AssetNameInput
@@ -212,25 +287,23 @@ export function EditAssetForm({ asset, onSuccess, onCancel }: EditAssetFormProps
         />
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <Button type="submit" className="flex-1" disabled={isSubmitting}>
+      <div className="pt-2">
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Saving..." : "Save Changes"}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
         </Button>
       </div>
 
-      <div className="border-t pt-4 mt-4">
+      <div className="border-t pt-4 mt-4 flex justify-end">
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
               type="button"
-              variant="destructive"
-              className="w-full"
+              variant="outline"
+              size="icon"
+              className="text-destructive border-destructive hover:bg-destructive/10"
               disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              <Trash2 className="h-4 w-4" />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>

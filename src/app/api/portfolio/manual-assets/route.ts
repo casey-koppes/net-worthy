@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       isHidden: asset.isHidden,
       visibility: asset.visibility,
       createdAt: asset.createdAt,
+      metadata: asset.metadata,
     }));
 
     return NextResponse.json({ assets: decryptedAssets });
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
 // POST - Add a new manual asset
 export async function POST(request: NextRequest) {
   try {
-    const { userId, category, name, value, description, isAsset, purchasePrice, purchaseDate } =
+    const { userId, category, name, value, description, isAsset, purchasePrice, purchaseDate, metadata } =
       await request.json();
 
     if (!userId || !category || !name || value === undefined) {
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
         purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
         purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
         isAsset: isAsset ?? true,
+        metadata: metadata || null,
       });
 
       // Log activity
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
         purchaseDate: purchaseDate || null,
         isAsset: isAsset ?? true,
         visibility: "private",
+        metadata: metadata || null,
       })
       .returning();
 
@@ -157,7 +160,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update a manual asset
 export async function PUT(request: NextRequest) {
   try {
-    const { assetId, userId, name, value, description, category, isAsset } = await request.json();
+    const { assetId, userId, name, value, description, category, isAsset, metadata, createdAt } = await request.json();
 
     if (!assetId || !userId) {
       return NextResponse.json(
@@ -177,6 +180,8 @@ export async function PUT(request: NextRequest) {
       if (value !== undefined) updateData.value = parseFloat(value);
       if (category !== undefined) updateData.category = category;
       if (isAsset !== undefined) updateData.isAsset = isAsset;
+      if (metadata !== undefined) updateData.metadata = metadata;
+      if (createdAt !== undefined) updateData.createdAt = createdAt;
 
       const asset = mockDb.manualAssets.update(assetId, updateData);
       if (!asset) {
@@ -230,6 +235,8 @@ export async function PUT(request: NextRequest) {
     if (value !== undefined) updateData.valueEncrypted = encryptNumber(value, userId);
     if (category !== undefined) updateData.category = category;
     if (isAsset !== undefined) updateData.isAsset = isAsset;
+    if (metadata !== undefined) updateData.metadata = metadata;
+    if (createdAt !== undefined) updateData.createdAt = new Date(createdAt);
 
     const [asset] = await db
       .update(manualAssets)
