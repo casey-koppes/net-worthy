@@ -126,6 +126,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Calculate price per unit for cost basis tracking
+    const pricePerUnit = balance > 0 ? balanceUsd / balance : 0;
+
+    // Build metadata for connected wallets (wallet address or transaction ID)
+    // This stores the market price at time of connection as the default purchase price
+    const walletMetadata = isManualEntry
+      ? metadata
+      : {
+          ...(metadata || {}),
+          units: balance,
+          pricePerUnit: pricePerUnit,
+          // Use provided purchaseUnitPrice or default to current market price
+          purchaseUnitPrice: metadata?.purchaseUnitPrice || pricePerUnit,
+          ticker: CHAIN_CONFIGS[chain]?.symbol || chain.toUpperCase(),
+        };
+
     // Use mock DB if no DATABASE_URL
     if (useMockDb()) {
       // For manual entries with units, use units as balance
@@ -138,7 +154,7 @@ export async function POST(request: NextRequest) {
         label: label || undefined,
         balance: actualBalance,
         balanceUsd,
-        metadata: metadata || null,
+        metadata: walletMetadata || null,
         createdAt: createdAt || new Date().toISOString(),
       });
 
@@ -148,11 +164,11 @@ export async function POST(request: NextRequest) {
         address: trimmedAddress,
         label: label || null,
         balanceUsd,
-        ...(metadata || {}),
+        ...(walletMetadata || {}),
       };
 
-      const activityAction = metadata?.action === "sell" ? "crypto_sold" :
-                            metadata?.action === "transfer" ? "crypto_transferred" : "wallet_added";
+      const activityAction = walletMetadata?.action === "sell" ? "crypto_sold" :
+                            walletMetadata?.action === "transfer" ? "crypto_transferred" : "wallet_added";
       mockDb.activityLog.create({
         userId,
         action: activityAction,
@@ -203,7 +219,7 @@ export async function POST(request: NextRequest) {
         label: label || null,
         balanceEncrypted: encryptNumber(actualBalance, userId),
         balanceUsdEncrypted: encryptNumber(balanceUsd, userId),
-        metadata: metadata || null,
+        metadata: walletMetadata || null,
         visibility: "private",
         lastSynced: new Date(),
         createdAt: createdAt ? new Date(createdAt) : new Date(),
@@ -216,12 +232,12 @@ export async function POST(request: NextRequest) {
       address: trimmedAddress,
       label: label || null,
       balanceUsd,
-      ...(metadata || {}),
+      ...(walletMetadata || {}),
     };
 
     // Log activity for real database
-    const dbActivityAction = metadata?.action === "sell" ? "crypto_sold" :
-                             metadata?.action === "transfer" ? "crypto_transferred" : "wallet_added";
+    const dbActivityAction = walletMetadata?.action === "sell" ? "crypto_sold" :
+                             walletMetadata?.action === "transfer" ? "crypto_transferred" : "wallet_added";
     await db.insert(activityLog).values({
       userId,
       action: dbActivityAction,
