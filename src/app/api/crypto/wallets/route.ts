@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
         label: label || null,
         balanceEncrypted: encryptNumber(actualBalance, userId),
         balanceUsdEncrypted: encryptNumber(balanceUsd, userId),
+        metadata: metadata || null,
         visibility: "private",
         lastSynced: new Date(),
         createdAt: createdAt ? new Date(createdAt) : new Date(),

@@ -116,6 +116,7 @@ export const cryptoWallets = pgTable("crypto_wallets", {
   balanceEncrypted: text("balance_encrypted"),
   balanceUsdEncrypted: text("balance_usd_encrypted"),
   tokensEncrypted: jsonb("tokens_encrypted"), // for EVM chains with multiple tokens
+  metadata: jsonb("metadata"), // action, ticker, units, etc.
   isHidden: boolean("is_hidden").default(false).notNull(),
   visibility: visibilityEnum("visibility").default("private").notNull(),
   lastSynced: timestamp("last_synced"),
