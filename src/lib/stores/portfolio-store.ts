@@ -92,6 +92,7 @@ interface PerformanceItem {
   startValue: number | null;
   changePercent: number | null;
   ticker?: string;
+  currentUnitPrice?: number | null;
 }
 
 interface PerformanceData {

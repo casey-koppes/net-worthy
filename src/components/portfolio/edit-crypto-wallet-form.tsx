@@ -33,6 +33,7 @@ export interface EditableCryptoWallet {
   balance: number;
   balanceUsd: number;
   createdAt?: string;
+  currentUnitPrice?: number | null;
   metadata?: {
     action?: string;
     ticker?: string;
@@ -269,13 +270,23 @@ export function EditCryptoWalletForm({
           <>
             {/* Cost Basis - Only for Buy actions */}
             {action === "buy" && (() => {
-              const costBasis = wallet.metadata?.purchaseUnitPrice
-                ? wallet.metadata.purchaseUnitPrice * units
+              const purchasePrice = wallet.metadata?.purchaseUnitPrice;
+              // Cost basis = purchase price × units
+              const costBasis = purchasePrice
+                ? purchasePrice * units
+                : wallet.balanceUsd; // fallback if no purchase price
+
+              // Current value = current market price × units (or stored value if no live price)
+              const currentValue = wallet.currentUnitPrice
+                ? wallet.currentUnitPrice * units
                 : wallet.balanceUsd;
-              const currentValue = wallet.balanceUsd;
+
               const dollarChange = currentValue - costBasis;
               const percentChange = costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0;
               const isGain = dollarChange >= 0;
+
+              // Hide if change is essentially zero
+              if (Math.abs(dollarChange) < 0.01) return null;
 
               return (
                 <div className="space-y-2">

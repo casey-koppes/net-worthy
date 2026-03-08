@@ -38,6 +38,7 @@ interface CryptoWallet {
   visibility?: string;
   lastSynced?: string;
   createdAt?: string;
+  currentUnitPrice?: number | null;
   metadata?: {
     action?: string;
     ticker?: string;
@@ -297,11 +298,11 @@ export function CryptoWalletsList({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Helper to get performance for an item
-  const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
+  const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null; currentUnitPrice: number | null } => {
     const item = performance?.items.find((i) => i.id === itemId);
-    if (!item) return { percent: null, dollarChange: null };
+    if (!item) return { percent: null, dollarChange: null, currentUnitPrice: null };
     const dollarChange = item.startValue !== null ? item.currentValue - item.startValue : null;
-    return { percent: item.changePercent, dollarChange };
+    return { percent: item.changePercent, dollarChange, currentUnitPrice: item.currentUnitPrice ?? null };
   };
 
   const handleEditSuccess = () => {
@@ -467,17 +468,31 @@ export function CryptoWalletsList({
                   onClick={() => toggleGroup(group.chain.toLowerCase())}
                 >
                   <div className="flex items-center gap-3">
-                    {!group.isManual && getChainLogo(displayChain) ? (
-                      <img
-                        src={getChainLogo(displayChain)!}
-                        alt={getChainSymbol(displayChain)}
-                        className="w-8 h-8 object-contain"
-                      />
-                    ) : (
-                      <Badge className={getChainColor(displayChain)}>
-                        {group.isManual ? "$" : getChainSymbol(displayChain)}
-                      </Badge>
-                    )}
+                    {(() => {
+                      // For manual entries, try to get logo from ticker
+                      const manualTicker = group.isManual ? group.wallets[0]?.metadata?.ticker : null;
+                      const logo = group.isManual
+                        ? getLogoFromTicker(manualTicker)
+                        : getChainLogo(displayChain);
+                      const symbol = group.isManual
+                        ? manualTicker?.toUpperCase() || "$"
+                        : getChainSymbol(displayChain);
+
+                      if (logo) {
+                        return (
+                          <img
+                            src={logo}
+                            alt={symbol}
+                            className="w-8 h-8 object-contain"
+                          />
+                        );
+                      }
+                      return (
+                        <Badge className={getChainColor(displayChain)}>
+                          {symbol}
+                        </Badge>
+                      );
+                    })()}
                     <div className="flex flex-col">
                       <span className="font-medium">{group.isManual ? group.chain : getChainName(displayChain)}</span>
                       <span className="text-sm text-muted-foreground">
@@ -534,7 +549,9 @@ export function CryptoWalletsList({
                           className="flex-1 flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
                           onDoubleClick={(e) => {
                             e.stopPropagation();
-                            setEditingWallet(wallet);
+                            // Include currentUnitPrice from performance data for cost basis calculation
+                            const { currentUnitPrice } = getItemPerformance(wallet.id);
+                            setEditingWallet({ ...wallet, currentUnitPrice });
                           }}
                           title="Double-click to edit"
                         >
@@ -597,11 +614,21 @@ export function CryptoWalletsList({
                               </span>
                               {walletAction === "buy" && (() => {
                                 const units = wallet.metadata?.units || wallet.balance;
-                                // Use purchaseUnitPrice if set, otherwise use current value (balanceUsd) as cost basis
-                                const costBasis = wallet.metadata?.purchaseUnitPrice
-                                  ? wallet.metadata.purchaseUnitPrice * units
+                                const purchasePrice = wallet.metadata?.purchaseUnitPrice;
+                                // Get current market price from performance data
+                                const { currentUnitPrice } = getItemPerformance(wallet.id);
+
+                                // Cost basis = purchase price × units
+                                const costBasis = purchasePrice
+                                  ? purchasePrice * units
+                                  : wallet.balanceUsd; // fallback to stored value if no purchase price
+
+                                // Current value = current market price × units (or stored value if no live price)
+                                const currentValue = currentUnitPrice
+                                  ? currentUnitPrice * units
                                   : wallet.balanceUsd;
-                                const dollarChange = wallet.balanceUsd - costBasis;
+
+                                const dollarChange = currentValue - costBasis;
                                 const isGain = dollarChange >= 0;
                                 // Hide if change is essentially zero (less than $0.01) due to floating point
                                 if (Math.abs(dollarChange) < 0.01) return null;

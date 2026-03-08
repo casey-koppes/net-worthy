@@ -46,6 +46,7 @@ interface PerformanceItem {
   startValue: number | null;
   changePercent: number | null;
   ticker?: string;
+  currentUnitPrice?: number | null;
 }
 
 interface PerformanceResponse {
@@ -330,15 +331,17 @@ async function calculateRealPerformance(userId: string, startDate: string) {
     let currentValue = storedValue;
     let startValue = storedValue;
     let changePercent: number | null = 0;
+    let currentUnitPrice: number | null = null;
 
     const ticker = getYahooTicker(wallet.chain, wallet.metadata);
     if (ticker) {
       const prices = cryptoPriceMap.get(ticker);
 
-      if (prices && storedValue > 0) {
-        // Calculate the coin balance from stored USD value and current price
-        // This is an approximation since we store USD value, not coin count
-        if (prices.currentPrice && prices.historicalPrice) {
+      if (prices) {
+        // Store the current unit price for cost basis calculations
+        currentUnitPrice = prices.currentPrice;
+
+        if (storedValue > 0 && prices.currentPrice && prices.historicalPrice) {
           // Use price ratio to calculate historical value
           const priceRatio = prices.historicalPrice / prices.currentPrice;
           startValue = storedValue * priceRatio;
@@ -367,6 +370,7 @@ async function calculateRealPerformance(userId: string, startDate: string) {
       ticker: isManual
         ? (wallet.metadata as { ticker?: string } | null)?.ticker?.toUpperCase() || "CRYPTO"
         : wallet.chain.toUpperCase(),
+      currentUnitPrice,
     });
   }
 
@@ -613,13 +617,17 @@ async function calculateMockPerformance(userId: string, startDate: string) {
     let currentValue = storedValue;
     let startValue = storedValue;
     let changePercent: number | null = 0;
+    let currentUnitPrice: number | null = null;
 
     const ticker = getYahooTicker(wallet.chain, wallet.metadata);
     if (ticker) {
       const prices = cryptoPriceMap.get(ticker);
 
-      if (prices && storedValue > 0) {
-        if (prices.currentPrice && prices.historicalPrice) {
+      if (prices) {
+        // Store the current unit price for cost basis calculations
+        currentUnitPrice = prices.currentPrice;
+
+        if (storedValue > 0 && prices.currentPrice && prices.historicalPrice) {
           const priceRatio = prices.historicalPrice / prices.currentPrice;
           startValue = storedValue * priceRatio;
           changePercent = calculatePerformance(currentValue, startValue);
@@ -647,6 +655,7 @@ async function calculateMockPerformance(userId: string, startDate: string) {
       ticker: isManual
         ? (wallet.metadata as { ticker?: string } | null)?.ticker?.toUpperCase() || "CRYPTO"
         : wallet.chain.toUpperCase(),
+      currentUnitPrice,
     });
   }
 
