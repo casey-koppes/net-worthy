@@ -429,11 +429,19 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      // Update the wallet
+      // Calculate price per unit
+      const pricePerUnit = walletData.balance > 0 ? walletData.balanceUsd / walletData.balance : 0;
+
+      // Update the wallet including metadata with new units
       const updatedWallet = mockDb.cryptoWallets.update(walletId, {
         balance: walletData.balance,
         balanceUsd: walletData.balanceUsd,
         lastSynced: new Date().toISOString(),
+        metadata: {
+          ...wallet.metadata,
+          units: walletData.balance,
+          pricePerUnit: pricePerUnit,
+        },
       });
 
       return NextResponse.json({
@@ -485,12 +493,24 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update wallet with new balance
+    // Calculate price per unit
+    const pricePerUnit = walletData.balance > 0 ? walletData.balanceUsd / walletData.balance : 0;
+
+    // Get existing metadata and update with new units
+    const existingMetadata = (wallet as { metadata?: Record<string, unknown> | null }).metadata || {};
+    const updatedMetadata = {
+      ...existingMetadata,
+      units: walletData.balance,
+      pricePerUnit: pricePerUnit,
+    };
+
+    // Update wallet with new balance and metadata
     await db
       .update(cryptoWallets)
       .set({
         balanceEncrypted: encryptNumber(walletData.balance, userId),
         balanceUsdEncrypted: encryptNumber(walletData.balanceUsd, userId),
+        metadata: updatedMetadata,
         lastSynced: new Date(),
       })
       .where(eq(cryptoWallets.id, walletId));
