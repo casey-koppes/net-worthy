@@ -219,7 +219,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-h-[70vh] overflow-y-auto">
       <div className="space-y-6 pb-4">
         {/* Connect Wallet Section */}
         <div className="rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4">

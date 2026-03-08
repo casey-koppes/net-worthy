@@ -138,7 +138,7 @@ export function EditCryptoWalletForm({
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-h-[70vh] overflow-y-auto">
       <div className="space-y-4 pb-4">
         {/* Name */}
         <div className="space-y-2">
