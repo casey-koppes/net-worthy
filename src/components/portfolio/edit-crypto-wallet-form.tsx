@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { HelpCircle, RefreshCw, Trash2 } from "lucide-react";
+import { ExternalLink, HelpCircle, RefreshCw, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
 
@@ -102,6 +102,39 @@ function getActionLabel(action: string): string {
       return "Transfer to Cold Wallet";
     default:
       return "Buy";
+  }
+}
+
+function getBlockchainExplorerUrl(chain: string, address: string, transactionId?: string): string {
+  // If it's a transaction ID entry, link to the transaction
+  if (transactionId || address.startsWith("txn-")) {
+    const txid = transactionId || address.replace("txn-", "");
+    switch (chain.toLowerCase()) {
+      case "bitcoin":
+        return `https://blockstream.info/tx/${txid}`;
+      case "ethereum":
+        return `https://etherscan.io/tx/${txid}`;
+      case "solana":
+        return `https://solscan.io/tx/${txid}`;
+      case "polygon":
+        return `https://polygonscan.com/tx/${txid}`;
+      default:
+        return `https://blockstream.info/tx/${txid}`;
+    }
+  }
+
+  // Otherwise, link to the wallet address
+  switch (chain.toLowerCase()) {
+    case "bitcoin":
+      return `https://blockstream.info/address/${address}`;
+    case "ethereum":
+      return `https://etherscan.io/address/${address}`;
+    case "solana":
+      return `https://solscan.io/account/${address}`;
+    case "polygon":
+      return `https://polygonscan.com/address/${address}`;
+    default:
+      return `https://blockstream.info/address/${address}`;
   }
 }
 
@@ -327,19 +360,34 @@ export function EditCryptoWalletForm({
                 <span className="font-mono text-sm">{shortenAddress(wallet.metadata.transactionId)}</span>
               </div>
             )}
-            {!wallet.address.startsWith("txn-") && (
+            <div className="flex gap-2">
+              {!wallet.address.startsWith("txn-") && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleSync}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                  {isSyncing ? "Syncing..." : "Sync"}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="w-full"
-                onClick={handleSync}
-                disabled={isSyncing}
+                className={wallet.address.startsWith("txn-") ? "w-full" : "flex-1"}
+                onClick={() => window.open(
+                  getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId),
+                  "_blank"
+                )}
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                {isSyncing ? "Syncing..." : "Sync Balance from Blockchain"}
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View on Blockchain
               </Button>
-            )}
+            </div>
           </div>
         )}
 
