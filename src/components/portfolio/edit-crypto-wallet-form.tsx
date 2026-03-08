@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { HelpCircle, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
 
@@ -110,15 +111,117 @@ export function EditCryptoWalletForm({
 }: EditCryptoWalletFormProps) {
   const { dbUserId } = useAuthStore();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showMore, setShowMore] = useState(false);
 
   // Determine if this is a manual entry or connected wallet
   const isManualEntry = wallet.chain.toLowerCase() === "manual";
   const action = wallet.metadata?.action || "buy";
-  const ticker = wallet.metadata?.ticker || getChainSymbol(wallet.chain);
-  const units = wallet.metadata?.units || wallet.balance;
-  const pricePerUnit = wallet.metadata?.pricePerUnit || (units > 0 ? wallet.balanceUsd / units : 0);
   const description = wallet.metadata?.description || "";
+
+  // Editable field states
+  const [name, setName] = useState<string>(
+    wallet.label || (isManualEntry ? "Manual Entry" : getChainSymbol(wallet.chain))
+  );
+  const [ticker, setTicker] = useState<string>(
+    wallet.metadata?.ticker || getChainSymbol(wallet.chain)
+  );
+  const [units, setUnits] = useState<string>(
+    (wallet.metadata?.units || wallet.balance).toString()
+  );
+  const [purchaseUnitPrice, setPurchaseUnitPrice] = useState<string>(
+    wallet.metadata?.purchaseUnitPrice?.toString() || ""
+  );
+  const [purchaseDate, setPurchaseDate] = useState<string>(
+    wallet.createdAt ? new Date(wallet.createdAt).toISOString().split("T")[0] : ""
+  );
+
+  // Parsed units for calculations
+  const parsedUnits = parseFloat(units) || 0;
+
+  // Market price per unit
+  const marketPricePerUnit = wallet.currentUnitPrice || wallet.metadata?.pricePerUnit || (parsedUnits > 0 ? wallet.balanceUsd / parsedUnits : 0);
+
+  // Calculate value based on purchase price if set, otherwise use market price
+  const calculatedValue = purchaseUnitPrice && parseFloat(purchaseUnitPrice) > 0
+    ? parseFloat(purchaseUnitPrice) * parsedUnits
+    : marketPricePerUnit * parsedUnits;
+
+  // Check if there are unsaved changes
+  const originalName = wallet.label || (isManualEntry ? "Manual Entry" : getChainSymbol(wallet.chain));
+  const originalTicker = wallet.metadata?.ticker || getChainSymbol(wallet.chain);
+  const originalUnits = (wallet.metadata?.units || wallet.balance).toString();
+  const originalPurchasePrice = wallet.metadata?.purchaseUnitPrice?.toString() || "";
+  const originalPurchaseDate = wallet.createdAt ? new Date(wallet.createdAt).toISOString().split("T")[0] : "";
+
+  const hasChanges =
+    name !== originalName ||
+    ticker !== originalTicker ||
+    units !== originalUnits ||
+    purchaseUnitPrice !== originalPurchasePrice ||
+    purchaseDate !== originalPurchaseDate;
+
+  async function handleSave() {
+    if (!dbUserId) {
+      toast.error("Please login first");
+      return;
+    }
+
+    // Validate required fields
+    if (!name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    if (!ticker.trim()) {
+      toast.error("Ticker is required");
+      return;
+    }
+    const newUnits = parseFloat(units);
+    if (isNaN(newUnits) || newUnits <= 0) {
+      toast.error("Please enter a valid number of units");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const newPurchasePrice = purchaseUnitPrice ? parseFloat(purchaseUnitPrice) : null;
+      const newValue = newPurchasePrice && newPurchasePrice > 0
+        ? newPurchasePrice * newUnits
+        : marketPricePerUnit * newUnits;
+
+      const res = await fetch(`/api/crypto/wallets`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletId: wallet.id,
+          userId: dbUserId,
+          label: name.trim(),
+          balance: newUnits,
+          manualValue: newValue,
+          createdAt: purchaseDate ? new Date(purchaseDate).toISOString() : undefined,
+          metadata: {
+            ...wallet.metadata,
+            ticker: ticker.toUpperCase().trim(),
+            units: newUnits,
+            purchaseUnitPrice: newPurchasePrice,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save");
+      }
+
+      toast.success("Record updated successfully!");
+      onSuccess?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   async function handleDelete() {
     if (!dbUserId) {
@@ -156,23 +259,22 @@ export function EditCryptoWalletForm({
           <Label htmlFor="name">Name</Label>
           <Input
             id="name"
-            value={wallet.label || (isManualEntry ? "Manual Entry" : getChainSymbol(wallet.chain))}
-            className="bg-muted cursor-not-allowed"
-            readOnly
-            disabled
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Bitcoin Holdings"
           />
         </div>
 
         {/* Ticker and Units */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="ticker">Crypto Ticker</Label>
+            <Label htmlFor="ticker">Ticker</Label>
             <Input
               id="ticker"
               value={ticker}
-              className="uppercase bg-muted cursor-not-allowed"
-              readOnly
-              disabled
+              onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              className="uppercase"
+              placeholder="e.g., BTC"
             />
           </div>
 
@@ -180,10 +282,12 @@ export function EditCryptoWalletForm({
             <Label htmlFor="units">Number of Units</Label>
             <Input
               id="units"
-              value={units.toFixed(8)}
-              className="bg-muted cursor-not-allowed"
-              readOnly
-              disabled
+              type="number"
+              step="0.00000001"
+              min="0"
+              value={units}
+              onChange={(e) => setUnits(e.target.value)}
+              placeholder="e.g., 0.5"
             />
           </div>
         </div>
@@ -207,24 +311,54 @@ export function EditCryptoWalletForm({
         </div>
 
         {/* Market Price Banner */}
-        {pricePerUnit > 0 && (
+        {marketPricePerUnit > 0 && (
           <div className="rounded-md bg-blue-50 border border-blue-200 p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-800">Price per {ticker}</span>
+              <span className="text-sm font-medium text-blue-800">Market Price per {ticker}</span>
               <span className="text-sm font-semibold text-blue-800">
-                {formatCurrency(pricePerUnit)}
+                {formatCurrency(marketPricePerUnit)}
               </span>
             </div>
-            <div className="flex items-center justify-between border-t border-blue-200 pt-2">
-              <span className="text-sm font-medium text-blue-800">Total Value</span>
-              <span className="text-sm font-semibold text-blue-800">
-                {formatCurrency(wallet.balanceUsd)}
-              </span>
-            </div>
+            {marketPricePerUnit > 0 && parsedUnits > 0 && (
+              <div className="flex items-center justify-between border-t border-blue-200 pt-2">
+                <span className="text-sm font-medium text-blue-800">Market Value</span>
+                <span className="text-sm font-semibold text-blue-800">
+                  {formatCurrency(marketPricePerUnit * parsedUnits)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Value - Read only */}
+        {/* Purchase Unit Price - Editable */}
+        <div className="space-y-2">
+          <Label htmlFor="purchaseUnitPrice" className="flex items-center gap-1">
+            Purchase Unit Price ($)
+            <span
+              title="Optional. If set, Value will be calculated from this instead of market price."
+              className="inline-flex cursor-help"
+            >
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="false" />
+            </span>
+          </Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              $
+            </span>
+            <Input
+              id="purchaseUnitPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              className="pl-7"
+              value={purchaseUnitPrice}
+              onChange={(e) => setPurchaseUnitPrice(e.target.value)}
+              placeholder="Use market price"
+            />
+          </div>
+        </div>
+
+        {/* Value - Calculated from purchase price or market price */}
         <div className="space-y-2">
           <Label htmlFor="value">Value ($)</Label>
           <div className="relative">
@@ -235,11 +369,16 @@ export function EditCryptoWalletForm({
               id="value"
               type="text"
               className="pl-7 bg-muted cursor-not-allowed"
-              value={wallet.balanceUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              value={calculatedValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               readOnly
               disabled
             />
           </div>
+          <p className="text-xs text-muted-foreground">
+            {purchaseUnitPrice && parseFloat(purchaseUnitPrice) > 0
+              ? "Calculated from Purchase Unit Price × Units"
+              : "Calculated from Market Price × Units"}
+          </p>
         </div>
 
         {/* For connected wallets, always show address info */}
@@ -268,17 +407,31 @@ export function EditCryptoWalletForm({
         {/* Additional fields shown when expanded */}
         {showMore && (
           <>
+            {/* Purchase Date - Editable */}
+            <div className="space-y-2">
+              <Label htmlFor="purchaseDate">Purchase Date</Label>
+              <Input
+                id="purchaseDate"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                The date this crypto was purchased
+              </p>
+            </div>
+
             {/* Cost Basis - Only for Buy actions */}
             {action === "buy" && (() => {
-              const purchasePrice = wallet.metadata?.purchaseUnitPrice;
+              const currentPurchasePrice = purchaseUnitPrice ? parseFloat(purchaseUnitPrice) : null;
               // Cost basis = purchase price × units
-              const costBasis = purchasePrice
-                ? purchasePrice * units
+              const costBasis = currentPurchasePrice
+                ? currentPurchasePrice * parsedUnits
                 : wallet.balanceUsd; // fallback if no purchase price
 
               // Current value = current market price × units (or stored value if no live price)
               const currentValue = wallet.currentUnitPrice
-                ? wallet.currentUnitPrice * units
+                ? wallet.currentUnitPrice * parsedUnits
                 : wallet.balanceUsd;
 
               const dollarChange = currentValue - costBasis;
@@ -318,40 +471,31 @@ export function EditCryptoWalletForm({
                 />
               </div>
             )}
-
-            {/* Created Date */}
-            {wallet.createdAt && (
-              <div className="space-y-2">
-                <Label htmlFor="createdAt">Purchase Date</Label>
-                <Input
-                  id="createdAt"
-                  type="text"
-                  value={new Date(wallet.createdAt).toLocaleDateString()}
-                  className="bg-muted cursor-not-allowed"
-                  readOnly
-                  disabled
-                />
-              </div>
-            )}
           </>
         )}
       </div>
 
       {/* Footer with buttons */}
-      <div className="sticky bottom-0 bg-background pt-4 border-t space-y-3">
-        <Button type="button" variant="outline" className="w-full" onClick={onCancel}>
-          Close
+      <div className="flex gap-2 pt-4 border-t">
+        <Button
+          type="button"
+          className="flex-1"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving..." : "Save"}
         </Button>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
               type="button"
-              variant="destructive"
-              className="w-full"
+              variant="outline"
+              size="icon"
+              className="text-destructive border-destructive hover:bg-destructive/10"
               disabled={isDeleting}
             >
-              {isDeleting ? "Removing..." : "Remove Record"}
+              <Trash2 className="h-4 w-4" />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>

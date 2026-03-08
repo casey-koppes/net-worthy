@@ -406,7 +406,7 @@ export function CryptoWalletsList({
               No wallets added yet. Add a public wallet address to track your
               crypto.
             </p>
-            <Button onClick={onAddWallet}>Add Wallet</Button>
+            <Button onClick={onAddWallet}>Add Crypto</Button>
           </div>
         </CardContent>
       </Card>
@@ -424,7 +424,7 @@ export function CryptoWalletsList({
           </CardDescription>
         </div>
         <Button variant="outline" size="sm" onClick={onAddWallet}>
-          Add Wallet
+          Add Crypto
         </Button>
       </CardHeader>
       <CardContent>
@@ -496,7 +496,9 @@ export function CryptoWalletsList({
                     <div className="flex flex-col">
                       <span className="font-medium">{group.isManual ? group.chain : getChainName(displayChain)}</span>
                       <span className="text-sm text-muted-foreground">
-                        {group.isManual ? "Manual crypto entry" : `${formatCryptoBalance(group.totalBalance)} ${getChainSymbol(displayChain)}`}
+                        {group.isManual
+                          ? `${formatCryptoBalance(group.totalBalance)} ${group.wallets[0]?.metadata?.ticker?.toUpperCase() || "units"}`
+                          : `${formatCryptoBalance(group.totalBalance)} ${getChainSymbol(displayChain)}`}
                         {hasMultipleWallets && (
                           <span className="ml-2 text-xs text-blue-600">
                             ({group.wallets.length} {group.isManual ? "entries" : "wallets"})
@@ -583,11 +585,13 @@ export function CryptoWalletsList({
                                   );
                                 })()}
                                 <span className="font-medium text-xs">
-                                  {wallet.label || (isWalletManual ? "Manual entry" : shortenAddress(wallet.address))}
+                                  {wallet.label || (isWalletManual ? "Manual entry" : getChainName(wallet.chain))}
                                 </span>
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {isWalletManual ? "Manual entry" : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
+                                {isWalletManual
+                                  ? `${formatCryptoBalance(wallet.metadata?.units || wallet.balance)} ${wallet.metadata?.ticker?.toUpperCase() || "units"}`
+                                  : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
                                 {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
                               </span>
                             </div>

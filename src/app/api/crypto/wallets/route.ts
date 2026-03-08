@@ -231,6 +231,118 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH - Update a wallet (e.g., update purchase price, name, ticker, units)
+export async function PATCH(request: NextRequest) {
+  try {
+    const { walletId, userId, label, balance, manualValue, metadata, createdAt } = await request.json();
+
+    if (!walletId || !userId) {
+      return NextResponse.json(
+        { error: "Wallet ID and User ID are required" },
+        { status: 400 }
+      );
+    }
+
+    // Use mock DB if no DATABASE_URL
+    if (useMockDb()) {
+      const wallet = mockDb.cryptoWallets.findById(walletId);
+      if (!wallet) {
+        return NextResponse.json(
+          { error: "Wallet not found" },
+          { status: 404 }
+        );
+      }
+
+      // Build update object
+      const updates: Partial<typeof wallet> = {};
+      if (label !== undefined) updates.label = label;
+      if (balance !== undefined) updates.balance = balance;
+      if (manualValue !== undefined) updates.balanceUsd = manualValue;
+      if (metadata !== undefined) updates.metadata = { ...wallet.metadata, ...metadata };
+      if (createdAt !== undefined) updates.createdAt = createdAt;
+
+      // Update the wallet
+      const updatedWallet = mockDb.cryptoWallets.update(walletId, updates);
+
+      // Log activity
+      mockDb.activityLog.create({
+        userId,
+        action: "wallet_updated",
+        entityType: "crypto_wallet",
+        entityId: walletId,
+        metadata: {
+          chain: wallet.chain,
+          label,
+          balanceUsd: manualValue,
+          ticker: metadata?.ticker,
+          units: metadata?.units,
+          purchaseUnitPrice: metadata?.purchaseUnitPrice,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        wallet: updatedWallet,
+      });
+    }
+
+    // Get existing wallet
+    const wallet = await db.query.cryptoWallets.findFirst({
+      where: eq(cryptoWallets.id, walletId),
+    });
+
+    if (!wallet) {
+      return NextResponse.json(
+        { error: "Wallet not found" },
+        { status: 404 }
+      );
+    }
+
+    // Merge existing metadata with new metadata
+    const existingMetadata = (wallet as { metadata?: Record<string, unknown> | null }).metadata || {};
+    const updatedMetadata = metadata !== undefined ? { ...existingMetadata, ...metadata } : existingMetadata;
+
+    // Build update object
+    const updateData: Record<string, unknown> = {
+      metadata: updatedMetadata,
+    };
+    if (label !== undefined) updateData.label = label;
+    if (balance !== undefined) updateData.balanceEncrypted = encryptNumber(balance, userId);
+    if (manualValue !== undefined) updateData.balanceUsdEncrypted = encryptNumber(manualValue, userId);
+    if (createdAt !== undefined) updateData.createdAt = new Date(createdAt);
+
+    // Update wallet
+    await db
+      .update(cryptoWallets)
+      .set(updateData)
+      .where(eq(cryptoWallets.id, walletId));
+
+    // Log activity
+    await db.insert(activityLog).values({
+      userId,
+      action: "wallet_updated",
+      entityType: "crypto_wallet",
+      entityId: walletId,
+      metadata: {
+        chain: wallet.chain,
+        label,
+        balanceUsd: manualValue,
+        ticker: metadata?.ticker,
+        units: metadata?.units,
+        purchaseUnitPrice: metadata?.purchaseUnitPrice,
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to update wallet:", error);
+    return NextResponse.json(
+      { error: "Failed to update wallet" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Remove a wallet
 export async function DELETE(request: NextRequest) {
   try {
