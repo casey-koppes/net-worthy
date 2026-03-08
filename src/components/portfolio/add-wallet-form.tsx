@@ -240,7 +240,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
               <div className="space-y-2">
                 <Label htmlFor="chain">Blockchain</Label>
                 <Select value={chain} onValueChange={setChain}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full bg-background border-input">
                     <SelectValue placeholder="Select blockchain" />
                   </SelectTrigger>
                   <SelectContent>
@@ -260,6 +260,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                   placeholder="Enter public wallet address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  className="bg-background border-input"
                 />
                 <p className="text-xs text-muted-foreground">
                   Only enter your public address. Never share your private key.
