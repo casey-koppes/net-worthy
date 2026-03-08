@@ -17,7 +17,10 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
+import { CryptoNews } from "./crypto-news";
+import { CryptoInsights } from "./crypto-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { getPeriodLabel } from "@/lib/utils/period-utils";
@@ -284,6 +287,27 @@ export function CryptoWalletsList({
   const totalValue = wallets.reduce((sum, wallet) => sum + (wallet.balanceUsd || 0), 0);
   const uniqueCount = groupedWallets.length;
 
+  // Extract tickers for news component
+  const cryptoTickers = groupedWallets
+    .map((g) => {
+      // For manual entries, use the ticker from metadata
+      if (g.isManual && g.wallets[0]?.metadata?.ticker) {
+        return g.wallets[0].metadata.ticker;
+      }
+      // For connected wallets, use chain symbol
+      return getChainSymbol(g.chain);
+    })
+    .filter((t): t is string => t !== null && t !== "USD");
+
+  // Prepare holdings data for insights
+  const cryptoHoldings = groupedWallets.map((g) => ({
+    name: g.chain,
+    ticker: g.isManual ? (g.wallets[0]?.metadata?.ticker || null) : getChainSymbol(g.chain),
+    value: g.totalBalanceUsd,
+    units: g.totalBalance,
+    percentage: totalValue > 0 ? (g.totalBalanceUsd / totalValue) * 100 : 0,
+  }));
+
   if (isLoading) {
     return (
       <Card>
@@ -337,6 +361,32 @@ export function CryptoWalletsList({
         </Button>
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="wallets" className="w-full">
+          {/* Chrome-style tabs */}
+          <div className="border-b">
+            <TabsList className="h-auto p-0 bg-transparent gap-0">
+              <TabsTrigger
+                value="wallets"
+                className="relative rounded-none rounded-t-lg border border-b-0 border-transparent data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-none px-4 py-2 text-sm font-medium data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground data-[state=active]:z-10 -mb-px"
+              >
+                {uniqueCount} crypto - {formatCurrency(totalValue)}
+              </TabsTrigger>
+              <TabsTrigger
+                value="news"
+                className="relative rounded-none rounded-t-lg border border-b-0 border-transparent data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-none px-4 py-2 text-sm font-medium data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground data-[state=active]:z-10 -mb-px -ml-px"
+              >
+                News
+              </TabsTrigger>
+              <TabsTrigger
+                value="insights"
+                className="relative rounded-none rounded-t-lg border border-b-0 border-transparent data-[state=active]:border-border data-[state=active]:bg-background data-[state=active]:shadow-none px-4 py-2 text-sm font-medium data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground data-[state=active]:z-10 -mb-px -ml-px"
+              >
+                Insights
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="wallets" className="mt-4">
         <div className="space-y-2">
           {groupedWallets.map((group) => {
             const isExpanded = expandedGroups.has(group.chain.toLowerCase());
@@ -396,11 +446,22 @@ export function CryptoWalletsList({
                   <div className="border-t bg-muted/10 p-3 space-y-2">
                     {group.wallets.map((wallet) => {
                       const isWalletManual = wallet.chain.toLowerCase() === "manual";
+                      const walletAction = wallet.metadata?.action || "buy";
+                      const iconConfig = {
+                        buy: { bg: "bg-green-100", text: "text-green-600", icon: Plus },
+                        sell: { bg: "bg-red-100", text: "text-red-600", icon: Minus },
+                        transfer: { bg: "bg-blue-100", text: "text-blue-600", icon: null },
+                      }[walletAction] || { bg: "bg-green-100", text: "text-green-600", icon: Plus };
+                      const IconComponent = iconConfig.icon;
                       return (
                       <div key={wallet.id} className="flex items-center gap-2">
                         {/* Icon outside the card */}
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 bg-green-100 text-green-600">
-                          <Plus className="h-3 w-3" />
+                        <div className={`flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${iconConfig.bg} ${iconConfig.text}`}>
+                          {walletAction === "transfer" ? (
+                            <span className="text-xs font-bold">→</span>
+                          ) : IconComponent ? (
+                            <IconComponent className="h-3 w-3" />
+                          ) : null}
                         </div>
                         {/* Activity card */}
                         <div
@@ -437,12 +498,11 @@ export function CryptoWalletsList({
                           </div>
                           <div className="flex items-center gap-3">
                             {(() => {
-                              const action = wallet.metadata?.action || "buy";
                               const badgeConfig = {
                                 buy: { label: "Buy", className: "bg-green-100 text-green-700 hover:bg-green-100" },
                                 sell: { label: "Sell", className: "bg-red-100 text-red-700 hover:bg-red-100" },
-                                transfer: { label: "Transfer", className: "bg-blue-100 text-blue-700 hover:bg-blue-100" },
-                              }[action] || { label: "Buy", className: "bg-green-100 text-green-700 hover:bg-green-100" };
+                                transfer: { label: "Transfer to Cold Wallet", className: "bg-blue-100 text-blue-700 hover:bg-blue-100" },
+                              }[walletAction] || { label: "Buy", className: "bg-green-100 text-green-700 hover:bg-green-100" };
                               return (
                                 <Badge
                                   variant="secondary"
@@ -468,6 +528,20 @@ export function CryptoWalletsList({
             );
           })}
         </div>
+          </TabsContent>
+
+          <TabsContent value="news" className="mt-4">
+            <CryptoNews tickers={cryptoTickers} />
+          </TabsContent>
+
+          <TabsContent value="insights" className="mt-4">
+            <CryptoInsights
+              holdings={cryptoHoldings}
+              totalValue={totalValue}
+              userId={dbUserId || ""}
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       {/* Edit Dialog */}
