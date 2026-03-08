@@ -88,6 +88,18 @@ function getChainLogo(chain: string): string | null {
   }
 }
 
+// Get logo from ticker symbol (for manual entries)
+function getLogoFromTicker(ticker: string | null | undefined): string | null {
+  if (!ticker) return null;
+  const tickerMap: Record<string, string> = {
+    btc: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/250px-Bitcoin.svg.png",
+    eth: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Ethereum_logo_2014.svg/200px-Ethereum_logo_2014.svg.png",
+    sol: "https://upload.wikimedia.org/wikipedia/en/b/b9/Solana_logo.png",
+    matic: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Polygon_Blockchain_Matic_Logo.svg/200px-Polygon_Blockchain_Matic_Logo.svg.png",
+  };
+  return tickerMap[ticker.toLowerCase()] || null;
+}
+
 function getChainColor(chain: string): string {
   switch (chain.toLowerCase()) {
     case "bitcoin":
@@ -519,17 +531,30 @@ export function CryptoWalletsList({
                           <div className="flex items-center gap-3">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
-                                {!isWalletManual && getChainLogo(wallet.chain) ? (
-                                  <img
-                                    src={getChainLogo(wallet.chain)!}
-                                    alt={getChainSymbol(wallet.chain)}
-                                    className="w-4 h-4 object-contain"
-                                  />
-                                ) : (
-                                  <div className={`w-4 h-4 rounded-md ${isWalletManual ? "bg-green-500" : "bg-gradient-to-br from-blue-500 to-purple-600"} flex items-center justify-center text-white text-[6px] font-bold`}>
-                                    {isWalletManual ? "$" : getChainSymbol(wallet.chain).substring(0, 2)}
-                                  </div>
-                                )}
+                                {(() => {
+                                  // Get logo - either from chain (connected) or ticker (manual)
+                                  const logo = isWalletManual
+                                    ? getLogoFromTicker(wallet.metadata?.ticker)
+                                    : getChainLogo(wallet.chain);
+                                  const symbol = isWalletManual
+                                    ? wallet.metadata?.ticker?.toUpperCase() || "?"
+                                    : getChainSymbol(wallet.chain);
+
+                                  if (logo) {
+                                    return (
+                                      <img
+                                        src={logo}
+                                        alt={symbol}
+                                        className="w-4 h-4 object-contain"
+                                      />
+                                    );
+                                  }
+                                  return (
+                                    <div className="w-4 h-4 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[6px] font-bold">
+                                      {symbol.substring(0, 2)}
+                                    </div>
+                                  );
+                                })()}
                                 <span className="font-medium text-xs">
                                   {wallet.label || (isWalletManual ? "Manual entry" : shortenAddress(wallet.address))}
                                 </span>
