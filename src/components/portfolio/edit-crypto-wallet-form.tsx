@@ -460,17 +460,19 @@ export function EditCryptoWalletForm({
                 <span className="font-mono text-sm">{shortenAddress(wallet.metadata.transactionId)}</span>
               </div>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={handleSync}
-              disabled={isSyncing}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-              {isSyncing ? "Syncing..." : "Sync Balance from Blockchain"}
-            </Button>
+            {!wallet.address.startsWith("txn-") && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleSync}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                {isSyncing ? "Syncing..." : "Sync Balance from Blockchain"}
+              </Button>
+            )}
           </div>
         )}
 

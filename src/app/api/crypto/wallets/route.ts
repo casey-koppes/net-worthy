@@ -377,8 +377,24 @@ export async function PUT(request: NextRequest) {
         );
       }
 
+      // Can't sync transaction ID entries (no wallet address)
+      if (wallet.address.startsWith("txn-")) {
+        return NextResponse.json(
+          { error: "Cannot sync transaction-based entries. Transaction data is fetched once at creation." },
+          { status: 400 }
+        );
+      }
+
       // Fetch fresh balance
-      const walletData = await fetchWalletData(wallet.chain, wallet.address);
+      let walletData;
+      try {
+        walletData = await fetchWalletData(wallet.chain, wallet.address);
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "Failed to fetch balance from blockchain" },
+          { status: 500 }
+        );
+      }
 
       // Update the wallet
       const updatedWallet = mockDb.cryptoWallets.update(walletId, {
@@ -417,8 +433,24 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Can't sync transaction ID entries (no wallet address)
+    if (wallet.address.startsWith("txn-")) {
+      return NextResponse.json(
+        { error: "Cannot sync transaction-based entries. Transaction data is fetched once at creation." },
+        { status: 400 }
+      );
+    }
+
     // Fetch fresh balance
-    const walletData = await fetchWalletData(wallet.chain, wallet.address);
+    let walletData;
+    try {
+      walletData = await fetchWalletData(wallet.chain, wallet.address);
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Failed to fetch balance from blockchain" },
+        { status: 500 }
+      );
+    }
 
     // Update wallet with new balance
     await db
