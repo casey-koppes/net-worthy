@@ -68,6 +68,21 @@ function getChainSymbol(chain: string): string {
   }
 }
 
+function getChainName(chain: string): string {
+  switch (chain.toLowerCase()) {
+    case "bitcoin":
+      return "Bitcoin";
+    case "ethereum":
+      return "Ethereum";
+    case "solana":
+      return "Solana";
+    case "polygon":
+      return "Polygon";
+    default:
+      return chain.charAt(0).toUpperCase() + chain.slice(1);
+  }
+}
+
 function shortenAddress(address: string): string {
   if (address.length <= 16) return address;
   return `${address.slice(0, 8)}...${address.slice(-6)}`;
@@ -157,7 +172,7 @@ export function EditCryptoWalletForm({
 
   // Editable field states
   const [name, setName] = useState<string>(
-    wallet.label || (isManualEntry ? "Manual Entry" : getChainSymbol(wallet.chain))
+    wallet.label || (isManualEntry ? "Manual Entry" : getChainName(wallet.chain))
   );
   const [ticker, setTicker] = useState<string>(
     wallet.metadata?.ticker || getChainSymbol(wallet.chain)
@@ -187,7 +202,7 @@ export function EditCryptoWalletForm({
     : marketPricePerUnit * parsedUnits;
 
   // Check if there are unsaved changes
-  const originalName = wallet.label || (isManualEntry ? "Manual Entry" : getChainSymbol(wallet.chain));
+  const originalName = wallet.label || (isManualEntry ? "Manual Entry" : getChainName(wallet.chain));
   const originalTicker = wallet.metadata?.ticker || getChainSymbol(wallet.chain);
   const originalUnits = (wallet.metadata?.units || wallet.balance).toString();
   const originalPurchasePrice = wallet.metadata?.purchaseUnitPrice?.toString() || "";
