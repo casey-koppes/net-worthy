@@ -43,6 +43,7 @@ export interface EditableCryptoWallet {
     purchaseUnitPrice?: number;
     cryptoName?: string;
     description?: string;
+    transactionId?: string;
   } | null;
 }
 
@@ -440,17 +441,25 @@ export function EditCryptoWalletForm({
           </p>
         </div>
 
-        {/* For connected wallets, always show address info */}
+        {/* For connected wallets, always show address/transaction info */}
         {!isManualEntry && (
           <div className="rounded-lg border p-4 bg-muted/50 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Chain</span>
               <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Address</span>
-              <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
-            </div>
+            {!wallet.address.startsWith("txn-") && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Wallet Address</span>
+                <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
+              </div>
+            )}
+            {wallet.metadata?.transactionId && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Transaction ID</span>
+                <span className="font-mono text-sm">{shortenAddress(wallet.metadata.transactionId)}</span>
+              </div>
+            )}
             <Button
               type="button"
               variant="outline"

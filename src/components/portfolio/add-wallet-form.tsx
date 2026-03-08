@@ -31,6 +31,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
   // Wallet connection state
   const [chain, setChain] = useState<string>("");
   const [address, setAddress] = useState("");
+  const [transactionId, setTransactionId] = useState("");
 
   // Manual entry state
   const [manualFormData, setManualFormData] = useState({
@@ -100,8 +101,12 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
   }
 
   const handleConnectWallet = () => {
-    if (!chain || !address) {
-      toast.error("Please select a blockchain and enter a wallet address");
+    if (!chain) {
+      toast.error("Please select a blockchain");
+      return;
+    }
+    if (!address && !transactionId) {
+      toast.error("Please enter a wallet address or transaction ID");
       return;
     }
     handleWalletSubmit();
@@ -120,7 +125,8 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
         body: JSON.stringify({
           userId: dbUserId,
           chain,
-          address,
+          address: address || `txn-${transactionId}`,
+          metadata: transactionId ? { transactionId } : undefined,
         }),
       });
 
@@ -129,7 +135,12 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
         throw new Error(data.error || "Failed to add wallet");
       }
 
-      toast.success("Wallet connected successfully!");
+      const data = await response.json();
+      if (data.warning) {
+        toast.warning(data.warning);
+      } else {
+        toast.success("Wallet connected successfully!");
+      }
       onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add wallet");
@@ -262,19 +273,50 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                   id="address"
                   placeholder="Enter public wallet address"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    if (e.target.value) setTransactionId("");
+                  }}
                   className="bg-background border-input"
+                  disabled={!!transactionId}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Only enter your public address. Never share your private key.
-                </p>
               </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-primary/5 px-2 text-muted-foreground">
+                    Or
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="transactionId">Transaction ID</Label>
+                <Input
+                  id="transactionId"
+                  placeholder="Enter transaction ID (txid)"
+                  value={transactionId}
+                  onChange={(e) => {
+                    setTransactionId(e.target.value);
+                    if (e.target.value) setAddress("");
+                  }}
+                  className="bg-background border-input"
+                  disabled={!!address}
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Enter your public wallet address or transaction ID. Never share your private key.
+              </p>
             </div>
 
             <Button
               className="w-full bg-[#6132de] hover:bg-[#5028c6]"
               onClick={handleConnectWallet}
-              disabled={isLoading || !chain || !address}
+              disabled={isLoading || !chain || (!address && !transactionId)}
             >
               <Zap className="h-4 w-4 mr-2" />
               {isLoading ? "Connecting..." : "Connect Crypto Wallet"}
