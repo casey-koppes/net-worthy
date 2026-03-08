@@ -79,6 +79,16 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+function formatCompactCurrency(amount: number): string {
+  const absAmount = Math.abs(amount);
+  if (absAmount >= 1000000) {
+    return `$${(absAmount / 1000000).toFixed(2)}M`;
+  } else if (absAmount >= 1000) {
+    return `$${(absAmount / 1000).toFixed(2)}K`;
+  }
+  return `$${absAmount.toFixed(2)}`;
+}
+
 function getActionLabel(action: string): string {
   switch (action) {
     case "buy":
@@ -231,32 +241,6 @@ export function EditCryptoWalletForm({
           </div>
         </div>
 
-        {/* Cost Basis - Only for Buy actions */}
-        {action === "buy" && (
-          <div className="space-y-2">
-            <Label htmlFor="costBasis">Cost Basis ($)</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                id="costBasis"
-                type="text"
-                className="pl-7 bg-muted cursor-not-allowed"
-                value={(wallet.metadata?.purchaseUnitPrice
-                  ? wallet.metadata.purchaseUnitPrice * units
-                  : wallet.balanceUsd
-                ).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                readOnly
-                disabled
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Original purchase price for this position
-            </p>
-          </div>
-        )}
-
         {/* For connected wallets, always show address info */}
         {!isManualEntry && (
           <div className="rounded-lg border p-4 bg-muted/50 space-y-2">
@@ -283,6 +267,32 @@ export function EditCryptoWalletForm({
         {/* Additional fields shown when expanded */}
         {showMore && (
           <>
+            {/* Cost Basis - Only for Buy actions */}
+            {action === "buy" && (() => {
+              const costBasis = wallet.metadata?.purchaseUnitPrice
+                ? wallet.metadata.purchaseUnitPrice * units
+                : wallet.balanceUsd;
+              const currentValue = wallet.balanceUsd;
+              const dollarChange = currentValue - costBasis;
+              const percentChange = costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0;
+              const isGain = dollarChange >= 0;
+
+              return (
+                <div className="space-y-2">
+                  <Label>Cost Basis</Label>
+                  <div className={`flex items-center gap-2 p-2 rounded-md ${isGain ? "bg-green-50" : "bg-red-50"}`}>
+                    <span className={`inline-flex items-center font-medium ${isGain ? "text-green-600" : "text-red-600"}`}>
+                      <span>{Math.abs(percentChange).toFixed(1)}%</span>
+                      <span>{isGain ? "▲" : "▼"}</span>
+                    </span>
+                    <span className={`text-sm ${isGain ? "text-green-600" : "text-red-600"}`}>
+                      ({isGain ? "+" : "-"}{formatCompactCurrency(Math.abs(dollarChange))})
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Description */}
             {description && (
               <div className="space-y-2">
