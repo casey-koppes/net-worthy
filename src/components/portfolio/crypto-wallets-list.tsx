@@ -67,6 +67,16 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+function formatCompactCurrency(amount: number): string {
+  const absAmount = Math.abs(amount);
+  if (absAmount >= 1000000) {
+    return `$${(absAmount / 1000000).toFixed(2)}M`;
+  } else if (absAmount >= 1000) {
+    return `$${(absAmount / 1000).toFixed(2)}K`;
+  }
+  return `$${absAmount.toFixed(2)}`;
+}
+
 function formatCryptoBalance(amount: number, decimals: number = 8): string {
   return amount.toFixed(Math.min(decimals, 8));
 }
@@ -585,6 +595,20 @@ export function CryptoWalletsList({
                               <span className="font-medium text-gray-600">
                                 {formatCurrency(wallet.balanceUsd)}
                               </span>
+                              {walletAction === "buy" && (() => {
+                                const units = wallet.metadata?.units || wallet.balance;
+                                const costBasis = wallet.metadata?.purchaseUnitPrice
+                                  ? wallet.metadata.purchaseUnitPrice * units
+                                  : wallet.balanceUsd;
+                                const dollarChange = wallet.balanceUsd - costBasis;
+                                const isGain = dollarChange >= 0;
+                                if (dollarChange === 0) return null;
+                                return (
+                                  <span className={`text-xs ${isGain ? "text-green-600" : "text-red-600"}`}>
+                                    ({isGain ? "+" : "-"}{formatCompactCurrency(Math.abs(dollarChange))})
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
