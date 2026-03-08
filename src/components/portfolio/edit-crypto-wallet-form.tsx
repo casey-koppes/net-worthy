@@ -162,7 +162,7 @@ export function EditCryptoWalletForm({
   const hasChanges =
     name !== originalName ||
     ticker !== originalTicker ||
-    units !== originalUnits ||
+    (isManualEntry && units !== originalUnits) ||
     purchaseUnitPrice !== originalPurchasePrice ||
     purchaseDate !== originalPurchaseDate;
 
@@ -321,16 +321,33 @@ export function EditCryptoWalletForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="units">Number of Units</Label>
+            <Label htmlFor="units" className="flex items-center gap-1">
+              Number of Units
+              {!isManualEntry && (
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
+                  alt="Verified"
+                  className="w-3 h-3"
+                  title="Verified on-chain balance"
+                />
+              )}
+            </Label>
             <Input
               id="units"
               type="number"
               step="0.00000001"
               min="0"
               value={units}
-              onChange={(e) => setUnits(e.target.value)}
+              onChange={(e) => isManualEntry && setUnits(e.target.value)}
               placeholder="e.g., 0.5"
+              disabled={!isManualEntry}
+              className={!isManualEntry ? "bg-muted cursor-not-allowed" : ""}
             />
+            {!isManualEntry && (
+              <p className="text-xs text-muted-foreground">
+                Fetched from blockchain. Use Sync to update.
+              </p>
+            )}
           </div>
         </div>
 
