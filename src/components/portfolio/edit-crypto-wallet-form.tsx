@@ -231,6 +231,32 @@ export function EditCryptoWalletForm({
           </div>
         </div>
 
+        {/* Cost Basis - Only for Buy actions */}
+        {action === "buy" && (
+          <div className="space-y-2">
+            <Label htmlFor="costBasis">Cost Basis ($)</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                $
+              </span>
+              <Input
+                id="costBasis"
+                type="text"
+                className="pl-7 bg-muted cursor-not-allowed"
+                value={(wallet.metadata?.purchaseUnitPrice
+                  ? wallet.metadata.purchaseUnitPrice * units
+                  : wallet.balanceUsd
+                ).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                readOnly
+                disabled
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Original purchase price for this position
+            </p>
+          </div>
+        )}
+
         {/* For connected wallets, always show address info */}
         {!isManualEntry && (
           <div className="rounded-lg border p-4 bg-muted/50 space-y-2">
