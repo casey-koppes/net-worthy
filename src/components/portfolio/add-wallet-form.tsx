@@ -179,7 +179,10 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
             ticker: manualFormData.ticker.toUpperCase(),
             units: units,
             pricePerUnit: cryptoPrice,
-            purchaseUnitPrice: manualFormData.purchaseUnitPrice ? parseFloat(manualFormData.purchaseUnitPrice) : null,
+            // Use entered purchase price, or fall back to market price if not provided
+            purchaseUnitPrice: manualFormData.purchaseUnitPrice
+              ? parseFloat(manualFormData.purchaseUnitPrice)
+              : cryptoPrice,
             cryptoName: cryptoName,
             description: manualFormData.description || null,
           },
