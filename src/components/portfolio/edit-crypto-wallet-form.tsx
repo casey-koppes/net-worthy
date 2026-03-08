@@ -349,15 +349,15 @@ export function EditCryptoWalletForm({
               <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
             </div>
             {!wallet.address.startsWith("txn-") && (
-              <div className="flex items-center justify-between">
+              <div className="space-y-1">
                 <span className="text-sm font-medium text-muted-foreground">Wallet Address</span>
-                <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
+                <p className="font-mono text-xs break-all bg-background p-2 rounded border">{wallet.address}</p>
               </div>
             )}
             {wallet.metadata?.transactionId && (
-              <div className="flex items-center justify-between">
+              <div className="space-y-1">
                 <span className="text-sm font-medium text-muted-foreground">Transaction ID</span>
-                <span className="font-mono text-sm">{shortenAddress(wallet.metadata.transactionId)}</span>
+                <p className="font-mono text-xs break-all bg-background p-2 rounded border">{wallet.metadata.transactionId}</p>
               </div>
             )}
             <div className="flex gap-2">
