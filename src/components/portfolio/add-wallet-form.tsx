@@ -253,7 +253,14 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
             <div className="w-full space-y-3 text-left">
               <div className="space-y-2">
                 <Label htmlFor="chain">Blockchain</Label>
-                <Select value={chain} onValueChange={setChain}>
+                <Select
+                  value={chain}
+                  onValueChange={(value) => {
+                    setChain(value);
+                    // Clear transaction ID if switching away from Bitcoin
+                    if (value !== "bitcoin") setTransactionId("");
+                  }}
+                >
                   <SelectTrigger className="w-full bg-background border-input">
                     <SelectValue placeholder="Select blockchain" />
                   </SelectTrigger>
@@ -282,31 +289,36 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                 />
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-primary/5 px-2 text-muted-foreground">
-                    Or
-                  </span>
-                </div>
-              </div>
+              {/* Transaction ID only supported for Bitcoin */}
+              {chain === "bitcoin" && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-primary/5 px-2 text-muted-foreground">
+                        Or
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="transactionId">Transaction ID</Label>
-                <Input
-                  id="transactionId"
-                  placeholder="Enter transaction ID (txid)"
-                  value={transactionId}
-                  onChange={(e) => {
-                    setTransactionId(e.target.value);
-                    if (e.target.value) setAddress("");
-                  }}
-                  className="bg-background border-input"
-                  disabled={!!address}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transactionId">Transaction ID</Label>
+                    <Input
+                      id="transactionId"
+                      placeholder="Enter transaction ID (txid)"
+                      value={transactionId}
+                      onChange={(e) => {
+                        setTransactionId(e.target.value);
+                        if (e.target.value) setAddress("");
+                      }}
+                      className="bg-background border-input"
+                      disabled={!!address}
+                    />
+                  </div>
+                </>
+              )}
 
               <p className="text-xs text-muted-foreground">
                 Enter your public wallet address or transaction ID. Never share your private key.

@@ -162,7 +162,7 @@ export function EditCryptoWalletForm({
 
   const hasChanges =
     name !== originalName ||
-    ticker !== originalTicker ||
+    (isManualEntry && ticker !== originalTicker) ||
     (isManualEntry && units !== originalUnits) ||
     purchaseUnitPrice !== originalPurchasePrice ||
     purchaseDate !== originalPurchaseDate;
@@ -311,14 +311,30 @@ export function EditCryptoWalletForm({
         {/* Ticker and Units */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="ticker">Ticker</Label>
+            <Label htmlFor="ticker" className="flex items-center gap-1">
+              Ticker
+              {!isManualEntry && (
+                <img
+                  src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
+                  alt="Verified"
+                  className="w-3 h-3"
+                  title="Verified on-chain"
+                />
+              )}
+            </Label>
             <Input
               id="ticker"
               value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              className="uppercase"
+              onChange={(e) => isManualEntry && setTicker(e.target.value.toUpperCase())}
+              className={`uppercase ${!isManualEntry ? "bg-muted cursor-not-allowed" : ""}`}
               placeholder="e.g., BTC"
+              disabled={!isManualEntry}
             />
+            {!isManualEntry && (
+              <p className="text-xs text-muted-foreground">
+                Determined by blockchain
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
