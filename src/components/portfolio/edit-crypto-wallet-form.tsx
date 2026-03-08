@@ -231,6 +231,20 @@ export function EditCryptoWalletForm({
           </div>
         </div>
 
+        {/* For connected wallets, always show address info */}
+        {!isManualEntry && (
+          <div className="rounded-lg border p-4 bg-muted/50 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Chain</span>
+              <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Address</span>
+              <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
+            </div>
+          </div>
+        )}
+
         {/* View more toggle */}
         <button
           type="button"
@@ -270,20 +284,6 @@ export function EditCryptoWalletForm({
                   readOnly
                   disabled
                 />
-              </div>
-            )}
-
-            {/* For connected wallets, show address info */}
-            {!isManualEntry && (
-              <div className="rounded-lg border p-4 bg-muted/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Chain</span>
-                  <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Address</span>
-                  <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
-                </div>
               </div>
             )}
           </>
