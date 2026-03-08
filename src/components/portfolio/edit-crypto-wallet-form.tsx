@@ -301,12 +301,21 @@ export function EditCryptoWalletForm({
         throw new Error(data.error || "Failed to sync balance");
       }
 
+      // Extract the synced balance from the response
+      const newBalance = data.wallet?.balance ?? 0;
+      const newBalanceUsd = data.wallet?.balanceUsd ?? 0;
+
+      // Update both synced balance display and units field
       setSyncedBalance({
-        balance: data.wallet.balance,
-        balanceUsd: data.wallet.balanceUsd,
+        balance: newBalance,
+        balanceUsd: newBalanceUsd,
       });
-      setUnits(data.wallet.balance.toString());
-      toast.success("Balance synced successfully!");
+
+      // Convert balance to string for the units input field
+      const newUnitsStr = newBalance.toString();
+      setUnits(newUnitsStr);
+
+      toast.success(`Balance synced: ${newBalance} ${ticker}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to sync balance");
     } finally {
