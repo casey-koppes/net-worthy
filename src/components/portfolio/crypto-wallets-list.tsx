@@ -588,11 +588,21 @@ export function CryptoWalletsList({
                                   {wallet.label || (isWalletManual ? "Manual entry" : getChainName(wallet.chain))}
                                 </span>
                               </div>
-                              <span className="text-xs text-muted-foreground">
-                                {isWalletManual
-                                  ? `${formatCryptoBalance(wallet.metadata?.units || wallet.balance)} ${wallet.metadata?.ticker?.toUpperCase() || "units"}`
-                                  : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
-                                {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                {!isWalletManual && (
+                                  <img
+                                    src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
+                                    alt="Verified"
+                                    className="w-3 h-3"
+                                    title="Verified on-chain address"
+                                  />
+                                )}
+                                <span className="ml-0.5">
+                                  {isWalletManual
+                                    ? `${formatCryptoBalance(wallet.metadata?.units || wallet.balance)} ${wallet.metadata?.ticker?.toUpperCase() || "units"}`
+                                    : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
+                                  {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
+                                </span>
                               </span>
                             </div>
                           </div>
