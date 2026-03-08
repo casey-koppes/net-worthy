@@ -308,6 +308,41 @@ export function EditCryptoWalletForm({
           />
         </div>
 
+        {/* For connected wallets, show address/transaction info at the top */}
+        {!isManualEntry && (
+          <div className="rounded-lg border p-4 bg-muted/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Chain</span>
+              <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
+            </div>
+            {!wallet.address.startsWith("txn-") && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Wallet Address</span>
+                <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
+              </div>
+            )}
+            {wallet.metadata?.transactionId && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Transaction ID</span>
+                <span className="font-mono text-sm">{shortenAddress(wallet.metadata.transactionId)}</span>
+              </div>
+            )}
+            {!wallet.address.startsWith("txn-") && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleSync}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                {isSyncing ? "Syncing..." : "Sync Balance from Blockchain"}
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Ticker and Units */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -456,41 +491,6 @@ export function EditCryptoWalletForm({
               : "Calculated from Market Price × Units"}
           </p>
         </div>
-
-        {/* For connected wallets, always show address/transaction info */}
-        {!isManualEntry && (
-          <div className="rounded-lg border p-4 bg-muted/50 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Chain</span>
-              <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
-            </div>
-            {!wallet.address.startsWith("txn-") && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Wallet Address</span>
-                <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
-              </div>
-            )}
-            {wallet.metadata?.transactionId && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Transaction ID</span>
-                <span className="font-mono text-sm">{shortenAddress(wallet.metadata.transactionId)}</span>
-              </div>
-            )}
-            {!wallet.address.startsWith("txn-") && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={handleSync}
-                disabled={isSyncing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                {isSyncing ? "Syncing..." : "Sync Balance from Blockchain"}
-              </Button>
-            )}
-          </div>
-        )}
 
         {/* View more toggle */}
         <button
