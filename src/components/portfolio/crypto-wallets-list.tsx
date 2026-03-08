@@ -164,13 +164,13 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
     const isManual = wallet.chain.toLowerCase() === "manual";
     const key = isManual ? `manual-${(wallet.label || "Manual Entry").toLowerCase()}` : wallet.chain.toLowerCase();
 
-    // Determine if this is a buy or sell action
+    // Determine if this is a buy, sell, or transfer action
     const action = wallet.metadata?.action || "buy";
-    const isBuy = action === "buy";
+    const isSell = action === "sell";
 
-    // Calculate value contribution: Buy adds, Sell subtracts
-    const balanceContribution = isBuy ? wallet.balance : -wallet.balance;
-    const balanceUsdContribution = isBuy ? wallet.balanceUsd : -wallet.balanceUsd;
+    // Calculate value contribution: Buy/Transfer adds, Sell subtracts
+    const balanceContribution = isSell ? -wallet.balance : wallet.balance;
+    const balanceUsdContribution = isSell ? -wallet.balanceUsd : wallet.balanceUsd;
 
     if (groups.has(key)) {
       const group = groups.get(key)!;
@@ -429,12 +429,22 @@ export function CryptoWalletsList({
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <Badge
-                              variant="secondary"
-                              className="text-xs bg-green-100 text-green-700 hover:bg-green-100"
-                            >
-                              Hold
-                            </Badge>
+                            {(() => {
+                              const action = wallet.metadata?.action || "buy";
+                              const badgeConfig = {
+                                buy: { label: "Buy", className: "bg-green-100 text-green-700 hover:bg-green-100" },
+                                sell: { label: "Sell", className: "bg-red-100 text-red-700 hover:bg-red-100" },
+                                transfer: { label: "Transfer", className: "bg-blue-100 text-blue-700 hover:bg-blue-100" },
+                              }[action] || { label: "Buy", className: "bg-green-100 text-green-700 hover:bg-green-100" };
+                              return (
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs ${badgeConfig.className}`}
+                                >
+                                  {badgeConfig.label}
+                                </Badge>
+                              );
+                            })()}
                             <div className="flex flex-col items-end">
                               <span className="font-medium text-gray-600">
                                 {formatCurrency(wallet.balanceUsd)}

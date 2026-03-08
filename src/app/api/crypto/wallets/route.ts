@@ -132,9 +132,11 @@ export async function POST(request: NextRequest) {
         ...(metadata || {}),
       };
 
+      const activityAction = metadata?.action === "sell" ? "crypto_sold" :
+                            metadata?.action === "transfer" ? "crypto_transferred" : "wallet_added";
       mockDb.activityLog.create({
         userId,
-        action: metadata?.action === "sell" ? "crypto_sold" : "wallet_added",
+        action: activityAction,
         entityType: "crypto_wallet",
         entityId: wallet.id,
         metadata: activityMetadata,
@@ -197,9 +199,11 @@ export async function POST(request: NextRequest) {
     };
 
     // Log activity for real database
+    const dbActivityAction = metadata?.action === "sell" ? "crypto_sold" :
+                             metadata?.action === "transfer" ? "crypto_transferred" : "wallet_added";
     await db.insert(activityLog).values({
       userId,
-      action: metadata?.action === "sell" ? "crypto_sold" : "wallet_added",
+      action: dbActivityAction,
       entityType: "crypto_wallet",
       entityId: wallet.id,
       metadata: activityMetadata,

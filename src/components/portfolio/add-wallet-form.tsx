@@ -355,6 +355,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
               <SelectContent>
                 <SelectItem value="buy">Buy</SelectItem>
                 <SelectItem value="sell">Sell</SelectItem>
+                <SelectItem value="transfer">Transfer to Cold Wallet</SelectItem>
               </SelectContent>
             </Select>
           </div>
