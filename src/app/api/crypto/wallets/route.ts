@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, cryptoWallets, activityLog } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { encryptNumber, decryptNumber } from "@/lib/encryption";
-import { fetchWalletData, CHAIN_CONFIGS } from "@/lib/crypto/chains";
+import { fetchWalletData, fetchBitcoinTransaction, CHAIN_CONFIGS } from "@/lib/crypto/chains";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
 
 // GET - Fetch all wallets for a user
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     const isManualEntry = chain === "manual";
+    const isTransactionEntry = address.startsWith("txn-");
 
     // Validate chain for non-manual entries
     if (!isManualEntry && !CHAIN_CONFIGS[chain]) {
@@ -79,9 +80,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate address format (basic validation) - skip for manual entries
+    // Validate address format (basic validation) - skip for manual and transaction entries
     const trimmedAddress = address.trim();
-    if (!isManualEntry && trimmedAddress.length < 20) {
+    if (!isManualEntry && !isTransactionEntry && trimmedAddress.length < 20) {
       return NextResponse.json(
         { error: "Invalid wallet address" },
         { status: 400 }
@@ -97,6 +98,22 @@ export async function POST(request: NextRequest) {
       // For manual entries, use the provided value
       balanceUsd = manualValue || 0;
       balance = manualValue || 0;
+    } else if (isTransactionEntry) {
+      // For transaction ID entries, fetch transaction data from blockchain
+      const txid = trimmedAddress.replace("txn-", "");
+      try {
+        if (chain === "bitcoin") {
+          const txData = await fetchBitcoinTransaction(txid);
+          balance = txData.balance;
+          balanceUsd = txData.balanceUsd;
+        } else {
+          // Other chains don't support transaction fetching yet
+          balanceFetchError = `Transaction fetching not yet supported for ${chain}. Balance set to 0.`;
+        }
+      } catch (err) {
+        console.error("Failed to fetch transaction data:", err);
+        balanceFetchError = err instanceof Error ? err.message : "Failed to fetch transaction data";
+      }
     } else {
       try {
         const walletData = await fetchWalletData(chain, trimmedAddress);

@@ -39,6 +39,29 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
   },
 };
 
+// Fetch Bitcoin transaction data from Blockstream API
+export async function fetchBitcoinTransaction(txid: string): Promise<{ balance: number; balanceUsd: number }> {
+  const response = await fetch(
+    `${CHAIN_CONFIGS.bitcoin.apiUrl}/tx/${txid}`
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch Bitcoin transaction");
+  }
+
+  const data = await response.json();
+
+  // Sum all outputs to get total transaction value
+  const totalSatoshis = data.vout.reduce((sum: number, output: { value: number }) => sum + output.value, 0);
+  const balance = totalSatoshis / 100000000; // Convert satoshis to BTC
+
+  // Fetch current price
+  const price = await fetchCryptoPrice(CHAIN_CONFIGS.bitcoin.priceApiId);
+  const balanceUsd = balance * price;
+
+  return { balance, balanceUsd };
+}
+
 // Fetch Bitcoin balance from Blockstream API
 export async function fetchBitcoinBalance(address: string): Promise<number> {
   const response = await fetch(
