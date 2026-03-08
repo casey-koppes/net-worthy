@@ -595,14 +595,13 @@ export function CryptoWalletsList({
                               <span className="font-medium text-gray-600">
                                 {formatCurrency(wallet.balanceUsd)}
                               </span>
-                              {walletAction === "buy" && (() => {
+                              {walletAction === "buy" && wallet.metadata?.purchaseUnitPrice && (() => {
                                 const units = wallet.metadata?.units || wallet.balance;
-                                const costBasis = wallet.metadata?.purchaseUnitPrice
-                                  ? wallet.metadata.purchaseUnitPrice * units
-                                  : wallet.balanceUsd;
+                                const costBasis = wallet.metadata.purchaseUnitPrice * units;
                                 const dollarChange = wallet.balanceUsd - costBasis;
                                 const isGain = dollarChange >= 0;
-                                if (dollarChange === 0) return null;
+                                // Hide if change is essentially zero (less than $0.01)
+                                if (Math.abs(dollarChange) < 0.01) return null;
                                 return (
                                   <span className={`text-xs ${isGain ? "text-green-600" : "text-red-600"}`}>
                                     ({isGain ? "+" : "-"}{formatCompactCurrency(Math.abs(dollarChange))})
