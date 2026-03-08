@@ -73,9 +73,13 @@ export async function fetchBitcoinBalance(address: string): Promise<number> {
   }
 
   const data = await response.json();
-  const satoshis =
+  // Include both confirmed (chain_stats) and pending (mempool_stats) balances
+  const confirmedSatoshis =
     data.chain_stats.funded_txo_sum - data.chain_stats.spent_txo_sum;
-  return satoshis / 100000000; // Convert satoshis to BTC
+  const pendingSatoshis =
+    data.mempool_stats.funded_txo_sum - data.mempool_stats.spent_txo_sum;
+  const totalSatoshis = confirmedSatoshis + pendingSatoshis;
+  return totalSatoshis / 100000000; // Convert satoshis to BTC
 }
 
 // Fetch Ethereum balance from public RPC
