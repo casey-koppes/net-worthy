@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
     // Fetch initial balance
     let balance = 0;
     let balanceUsd = 0;
+    let balanceFetchError: string | null = null;
 
     if (isManualEntry) {
       // For manual entries, use the provided value
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
         balanceUsd = walletData.balanceUsd;
       } catch (err) {
         console.error("Failed to fetch initial balance:", err);
+        balanceFetchError = err instanceof Error ? err.message : "Failed to fetch balance";
         // Continue with zero balance if fetch fails
       }
     }
@@ -167,6 +169,7 @@ export async function POST(request: NextRequest) {
           balance: wallet.balance,
           balanceUsd: wallet.balanceUsd,
         },
+        ...(balanceFetchError && { warning: `Balance fetch failed: ${balanceFetchError}. You can sync the balance later.` }),
       });
     }
 
@@ -221,6 +224,7 @@ export async function POST(request: NextRequest) {
         balance,
         balanceUsd,
       },
+      ...(balanceFetchError && { warning: `Balance fetch failed: ${balanceFetchError}. You can sync the balance later.` }),
     });
   } catch (error) {
     console.error("Failed to add wallet:", error);
@@ -338,6 +342,109 @@ export async function PATCH(request: NextRequest) {
     console.error("Failed to update wallet:", error);
     return NextResponse.json(
       { error: "Failed to update wallet" },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT - Sync wallet balance from blockchain
+export async function PUT(request: NextRequest) {
+  try {
+    const { walletId, userId } = await request.json();
+
+    if (!walletId || !userId) {
+      return NextResponse.json(
+        { error: "Wallet ID and User ID are required" },
+        { status: 400 }
+      );
+    }
+
+    // Use mock DB if no DATABASE_URL
+    if (useMockDb()) {
+      const wallet = mockDb.cryptoWallets.findById(walletId);
+      if (!wallet) {
+        return NextResponse.json(
+          { error: "Wallet not found" },
+          { status: 404 }
+        );
+      }
+
+      // Can't sync manual entries
+      if (wallet.chain === "manual") {
+        return NextResponse.json(
+          { error: "Cannot sync manual entries" },
+          { status: 400 }
+        );
+      }
+
+      // Fetch fresh balance
+      const walletData = await fetchWalletData(wallet.chain, wallet.address);
+
+      // Update the wallet
+      const updatedWallet = mockDb.cryptoWallets.update(walletId, {
+        balance: walletData.balance,
+        balanceUsd: walletData.balanceUsd,
+        lastSynced: new Date().toISOString(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        wallet: {
+          ...updatedWallet,
+          balance: walletData.balance,
+          balanceUsd: walletData.balanceUsd,
+        },
+      });
+    }
+
+    // Get existing wallet
+    const wallet = await db.query.cryptoWallets.findFirst({
+      where: eq(cryptoWallets.id, walletId),
+    });
+
+    if (!wallet) {
+      return NextResponse.json(
+        { error: "Wallet not found" },
+        { status: 404 }
+      );
+    }
+
+    // Can't sync manual entries
+    if (wallet.chain === "manual") {
+      return NextResponse.json(
+        { error: "Cannot sync manual entries" },
+        { status: 400 }
+      );
+    }
+
+    // Fetch fresh balance
+    const walletData = await fetchWalletData(wallet.chain, wallet.address);
+
+    // Update wallet with new balance
+    await db
+      .update(cryptoWallets)
+      .set({
+        balanceEncrypted: encryptNumber(walletData.balance, userId),
+        balanceUsdEncrypted: encryptNumber(walletData.balanceUsd, userId),
+        lastSynced: new Date(),
+      })
+      .where(eq(cryptoWallets.id, walletId));
+
+    return NextResponse.json({
+      success: true,
+      wallet: {
+        id: wallet.id,
+        chain: wallet.chain,
+        address: wallet.address,
+        label: wallet.label,
+        balance: walletData.balance,
+        balanceUsd: walletData.balanceUsd,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to sync wallet:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to sync wallet" },
       { status: 500 }
     );
   }

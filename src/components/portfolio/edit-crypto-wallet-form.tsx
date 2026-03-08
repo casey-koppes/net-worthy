@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { HelpCircle, Trash2 } from "lucide-react";
+import { HelpCircle, RefreshCw, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { toast } from "sonner";
 
@@ -112,7 +112,9 @@ export function EditCryptoWalletForm({
   const { dbUserId } = useAuthStore();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [syncedBalance, setSyncedBalance] = useState<{ balance: number; balanceUsd: number } | null>(null);
 
   // Determine if this is a manual entry or connected wallet
   const isManualEntry = wallet.chain.toLowerCase() === "manual";
@@ -139,8 +141,11 @@ export function EditCryptoWalletForm({
   // Parsed units for calculations
   const parsedUnits = parseFloat(units) || 0;
 
+  // Use synced balance if available, otherwise use wallet values
+  const currentBalanceUsd = syncedBalance?.balanceUsd ?? wallet.balanceUsd;
+
   // Market price per unit
-  const marketPricePerUnit = wallet.currentUnitPrice || wallet.metadata?.pricePerUnit || (parsedUnits > 0 ? wallet.balanceUsd / parsedUnits : 0);
+  const marketPricePerUnit = wallet.currentUnitPrice || wallet.metadata?.pricePerUnit || (parsedUnits > 0 ? currentBalanceUsd / parsedUnits : 0);
 
   // Calculate value based on purchase price if set, otherwise use market price
   const calculatedValue = purchaseUnitPrice && parseFloat(purchaseUnitPrice) > 0
@@ -220,6 +225,43 @@ export function EditCryptoWalletForm({
       toast.error(error instanceof Error ? error.message : "Failed to save");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleSync() {
+    if (!dbUserId) {
+      toast.error("Please login first");
+      return;
+    }
+
+    setIsSyncing(true);
+
+    try {
+      const res = await fetch(`/api/crypto/wallets`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletId: wallet.id,
+          userId: dbUserId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to sync balance");
+      }
+
+      setSyncedBalance({
+        balance: data.wallet.balance,
+        balanceUsd: data.wallet.balanceUsd,
+      });
+      setUnits(data.wallet.balance.toString());
+      toast.success("Balance synced successfully!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to sync balance");
+    } finally {
+      setIsSyncing(false);
     }
   }
 
@@ -383,7 +425,7 @@ export function EditCryptoWalletForm({
 
         {/* For connected wallets, always show address info */}
         {!isManualEntry && (
-          <div className="rounded-lg border p-4 bg-muted/50 space-y-2">
+          <div className="rounded-lg border p-4 bg-muted/50 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Chain</span>
               <span className="font-medium">{getChainSymbol(wallet.chain)}</span>
@@ -392,6 +434,17 @@ export function EditCryptoWalletForm({
               <span className="text-sm font-medium text-muted-foreground">Address</span>
               <span className="font-mono text-sm">{shortenAddress(wallet.address)}</span>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={handleSync}
+              disabled={isSyncing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Syncing..." : "Sync Balance from Blockchain"}
+            </Button>
           </div>
         )}
 
