@@ -37,6 +37,142 @@ function getStartDate(period: string): string | null {
   return startDate ? startDate.toISOString().split("T")[0] : null;
 }
 
+// Build history from activity records for mock DB
+function buildHistoryFromActivities(
+  userId: string,
+  startDate: string | null
+): Array<{
+  date: string;
+  totalAssets: number;
+  totalLiabilities: number;
+  netWorth: number;
+  breakdown: Record<string, number> | null;
+}> {
+  // Fetch all activity-generating items
+  const manualAssets = mockDb.manualAssets.findByUserId(userId);
+  const cryptoWallets = mockDb.cryptoWallets.findByUserId(userId);
+
+  // Build a map of date -> portfolio changes
+  const dateMap = new Map<string, { assets: number; liabilities: number }>();
+
+  // Process manual assets
+  for (const asset of manualAssets) {
+    const date = asset.createdAt.split("T")[0];
+    if (startDate && date < startDate) continue;
+
+    const current = dateMap.get(date) || { assets: 0, liabilities: 0 };
+    const action = (asset.metadata as { action?: string } | null)?.action || "buy";
+    const isSell = action === "sell";
+    const valueChange = isSell ? -asset.value : asset.value;
+
+    if (asset.isAsset) {
+      current.assets += valueChange;
+    } else {
+      current.liabilities += valueChange;
+    }
+    dateMap.set(date, current);
+  }
+
+  // Process crypto wallets
+  for (const wallet of cryptoWallets) {
+    if (wallet.isHidden) continue;
+    const date = wallet.createdAt.split("T")[0];
+    if (startDate && date < startDate) continue;
+
+    const current = dateMap.get(date) || { assets: 0, liabilities: 0 };
+    const action = (wallet.metadata as { action?: string } | null)?.action || "buy";
+    const isSell = action === "sell";
+    const valueChange = isSell ? -wallet.balanceUsd : wallet.balanceUsd;
+
+    current.assets += valueChange;
+    dateMap.set(date, current);
+  }
+
+  // Sort dates and calculate cumulative values
+  const sortedDates = Array.from(dateMap.keys()).sort();
+
+  if (sortedDates.length === 0) {
+    // Return current snapshot if no dated activities
+    const snapshots = mockDb.portfolioSnapshots.findByUserId(userId, startDate || undefined);
+    return snapshots.map((snapshot) => ({
+      date: snapshot.date,
+      totalAssets: snapshot.totalAssets,
+      totalLiabilities: snapshot.totalLiabilities,
+      netWorth: snapshot.netWorth,
+      breakdown: snapshot.breakdown,
+    }));
+  }
+
+  // Build cumulative history
+  const history: Array<{
+    date: string;
+    totalAssets: number;
+    totalLiabilities: number;
+    netWorth: number;
+    breakdown: Record<string, number> | null;
+  }> = [];
+
+  let cumulativeAssets = 0;
+  let cumulativeLiabilities = 0;
+
+  // If we have a start date, calculate initial values from items created before
+  if (startDate) {
+    for (const asset of manualAssets) {
+      const date = asset.createdAt.split("T")[0];
+      if (date < startDate) {
+        const action = (asset.metadata as { action?: string } | null)?.action || "buy";
+        const isSell = action === "sell";
+        const valueChange = isSell ? -asset.value : asset.value;
+
+        if (asset.isAsset) {
+          cumulativeAssets += valueChange;
+        } else {
+          cumulativeLiabilities += valueChange;
+        }
+      }
+    }
+    for (const wallet of cryptoWallets) {
+      if (wallet.isHidden) continue;
+      const date = wallet.createdAt.split("T")[0];
+      if (date < startDate) {
+        const action = (wallet.metadata as { action?: string } | null)?.action || "buy";
+        const isSell = action === "sell";
+        const valueChange = isSell ? -wallet.balanceUsd : wallet.balanceUsd;
+        cumulativeAssets += valueChange;
+      }
+    }
+  }
+
+  for (const date of sortedDates) {
+    const dayChanges = dateMap.get(date)!;
+    cumulativeAssets += dayChanges.assets;
+    cumulativeLiabilities += dayChanges.liabilities;
+
+    history.push({
+      date,
+      totalAssets: cumulativeAssets,
+      totalLiabilities: cumulativeLiabilities,
+      netWorth: cumulativeAssets - cumulativeLiabilities,
+      breakdown: null,
+    });
+  }
+
+  // Add today's date if not present
+  const today = new Date().toISOString().split("T")[0];
+  const lastDate = sortedDates[sortedDates.length - 1];
+  if (lastDate !== today) {
+    history.push({
+      date: today,
+      totalAssets: cumulativeAssets,
+      totalLiabilities: cumulativeLiabilities,
+      netWorth: cumulativeAssets - cumulativeLiabilities,
+      breakdown: null,
+    });
+  }
+
+  return history;
+}
+
 // GET - Fetch portfolio history for a user
 export async function GET(request: NextRequest) {
   try {
@@ -62,15 +198,8 @@ export async function GET(request: NextRequest) {
     }>;
 
     if (useMockDb()) {
-      // Use mock database
-      const snapshots = mockDb.portfolioSnapshots.findByUserId(userId, startDate || undefined);
-      history = snapshots.map((snapshot) => ({
-        date: snapshot.date,
-        totalAssets: snapshot.totalAssets,
-        totalLiabilities: snapshot.totalLiabilities,
-        netWorth: snapshot.netWorth,
-        breakdown: snapshot.breakdown,
-      }));
+      // Use mock database - build history from activity records
+      history = buildHistoryFromActivities(userId, startDate);
     } else {
       // Use real database
       const whereConditions = startDate
