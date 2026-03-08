@@ -427,7 +427,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
           <button
             type="button"
             onClick={() => setShowMore(!showMore)}
-            className="text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline"
+            className="w-full text-center text-blue-600 text-sm font-medium hover:text-blue-700 hover:underline"
           >
             {showMore ? "view less" : "view more"}
           </button>
