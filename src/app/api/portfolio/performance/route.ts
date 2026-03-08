@@ -249,10 +249,43 @@ async function calculateRealPerformance(userId: string, startDate: string) {
     performanceItems.push(item);
   }
 
+  // Helper to get Yahoo Finance ticker from chain name or metadata ticker
+  const getYahooTicker = (chain: string, metadata: unknown): string | null => {
+    // First try chain name mapping
+    const chainTicker = cryptoTickerMap[chain.toLowerCase()];
+    if (chainTicker) return chainTicker;
+
+    // For manual entries, check metadata.ticker
+    if (chain.toLowerCase() === "manual" && metadata && typeof metadata === "object") {
+      const metaTicker = (metadata as { ticker?: string }).ticker?.toUpperCase();
+      if (metaTicker) {
+        // Map common abbreviations to Yahoo Finance format
+        const tickerMap: Record<string, string> = {
+          BTC: "BTC-USD",
+          ETH: "ETH-USD",
+          SOL: "SOL-USD",
+          ADA: "ADA-USD",
+          DOGE: "DOGE-USD",
+          DOT: "DOT-USD",
+          AVAX: "AVAX-USD",
+          MATIC: "MATIC-USD",
+          LINK: "LINK-USD",
+          LTC: "LTC-USD",
+          XRP: "XRP-USD",
+          SHIB: "SHIB-USD",
+          UNI: "UNI-USD",
+          ATOM: "ATOM-USD",
+        };
+        return tickerMap[metaTicker] || `${metaTicker}-USD`;
+      }
+    }
+    return null;
+  };
+
   // Collect unique crypto tickers to fetch
   const cryptoTickersToFetch = new Set<string>();
   for (const wallet of dbCryptoWallets) {
-    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    const ticker = getYahooTicker(wallet.chain, wallet.metadata);
     if (ticker) {
       cryptoTickersToFetch.add(ticker);
     }
@@ -298,7 +331,7 @@ async function calculateRealPerformance(userId: string, startDate: string) {
     let startValue = storedValue;
     let changePercent: number | null = 0;
 
-    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    const ticker = getYahooTicker(wallet.chain, wallet.metadata);
     if (ticker) {
       const prices = cryptoPriceMap.get(ticker);
 
@@ -314,15 +347,26 @@ async function calculateRealPerformance(userId: string, startDate: string) {
       }
     }
 
+    // Get display name - for manual entries use metadata info
+    const isManual = wallet.chain.toLowerCase() === "manual";
+    const displayName = isManual
+      ? (wallet.metadata as { cryptoName?: string; ticker?: string } | null)?.cryptoName ||
+        (wallet.metadata as { ticker?: string } | null)?.ticker ||
+        wallet.label ||
+        "Manual Crypto"
+      : `${wallet.chain} - ${wallet.label || wallet.address.slice(0, 8)}`;
+
     performanceItems.push({
       id: wallet.id,
       type: "asset",
-      name: `${wallet.chain} - ${wallet.label || wallet.address.slice(0, 8)}`,
+      name: displayName,
       category: "crypto",
       currentValue,
       startValue,
       changePercent,
-      ticker: wallet.chain.toUpperCase(),
+      ticker: isManual
+        ? (wallet.metadata as { ticker?: string } | null)?.ticker?.toUpperCase() || "CRYPTO"
+        : wallet.chain.toUpperCase(),
     });
   }
 
@@ -491,10 +535,43 @@ async function calculateMockPerformance(userId: string, startDate: string) {
     performanceItems.push(item);
   }
 
+  // Helper to get Yahoo Finance ticker from chain name or metadata ticker
+  const getYahooTicker = (chain: string, metadata: unknown): string | null => {
+    // First try chain name mapping
+    const chainTicker = cryptoTickerMap[chain.toLowerCase()];
+    if (chainTicker) return chainTicker;
+
+    // For manual entries, check metadata.ticker
+    if (chain.toLowerCase() === "manual" && metadata && typeof metadata === "object") {
+      const metaTicker = (metadata as { ticker?: string }).ticker?.toUpperCase();
+      if (metaTicker) {
+        // Map common abbreviations to Yahoo Finance format
+        const tickerMap: Record<string, string> = {
+          BTC: "BTC-USD",
+          ETH: "ETH-USD",
+          SOL: "SOL-USD",
+          ADA: "ADA-USD",
+          DOGE: "DOGE-USD",
+          DOT: "DOT-USD",
+          AVAX: "AVAX-USD",
+          MATIC: "MATIC-USD",
+          LINK: "LINK-USD",
+          LTC: "LTC-USD",
+          XRP: "XRP-USD",
+          SHIB: "SHIB-USD",
+          UNI: "UNI-USD",
+          ATOM: "ATOM-USD",
+        };
+        return tickerMap[metaTicker] || `${metaTicker}-USD`;
+      }
+    }
+    return null;
+  };
+
   // Collect unique crypto tickers to fetch
   const cryptoTickersToFetch = new Set<string>();
   for (const wallet of mockCryptoWallets) {
-    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    const ticker = getYahooTicker(wallet.chain, wallet.metadata);
     if (ticker) {
       cryptoTickersToFetch.add(ticker);
     }
@@ -537,7 +614,7 @@ async function calculateMockPerformance(userId: string, startDate: string) {
     let startValue = storedValue;
     let changePercent: number | null = 0;
 
-    const ticker = cryptoTickerMap[wallet.chain.toLowerCase()];
+    const ticker = getYahooTicker(wallet.chain, wallet.metadata);
     if (ticker) {
       const prices = cryptoPriceMap.get(ticker);
 
@@ -550,15 +627,26 @@ async function calculateMockPerformance(userId: string, startDate: string) {
       }
     }
 
+    // Get display name - for manual entries use metadata info
+    const isManual = wallet.chain.toLowerCase() === "manual";
+    const displayName = isManual
+      ? (wallet.metadata as { cryptoName?: string; ticker?: string } | null)?.cryptoName ||
+        (wallet.metadata as { ticker?: string } | null)?.ticker ||
+        wallet.label ||
+        "Manual Crypto"
+      : `${wallet.chain} Wallet`;
+
     performanceItems.push({
       id: wallet.id,
       type: "asset",
-      name: `${wallet.chain} Wallet`,
+      name: displayName,
       category: "crypto",
       currentValue,
       startValue,
       changePercent,
-      ticker: wallet.chain.toUpperCase(),
+      ticker: isManual
+        ? (wallet.metadata as { ticker?: string } | null)?.ticker?.toUpperCase() || "CRYPTO"
+        : wallet.chain.toUpperCase(),
     });
   }
 
