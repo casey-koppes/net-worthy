@@ -365,20 +365,20 @@ export function EditCryptoWalletForm({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="flex-1"
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={handleSync}
                   disabled={isSyncing}
+                  title="Sync balance from blockchain"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                  {isSyncing ? "Syncing..." : "Sync"}
+                  <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
                 </Button>
               )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className={wallet.address.startsWith("txn-") ? "w-full" : "flex-1"}
+                className="flex-1"
                 onClick={() => window.open(
                   getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId),
                   "_blank"
