@@ -122,6 +122,38 @@ function getChainSymbol(chain: string): string {
   }
 }
 
+// Normalize any crypto name or ticker to a standard ticker symbol for grouping
+function normalizeToTicker(input: string): string {
+  const normalized = input.toLowerCase().trim();
+
+  // Map common names to tickers
+  const nameToTicker: Record<string, string> = {
+    bitcoin: "btc",
+    ethereum: "eth",
+    solana: "sol",
+    polygon: "matic",
+    cardano: "ada",
+    polkadot: "dot",
+    dogecoin: "doge",
+    "shiba inu": "shib",
+    avalanche: "avax",
+    chainlink: "link",
+    ripple: "xrp",
+    litecoin: "ltc",
+    uniswap: "uni",
+    cosmos: "atom",
+    stellar: "xlm",
+  };
+
+  // Check if it's a name that maps to a ticker
+  if (nameToTicker[normalized]) {
+    return nameToTicker[normalized];
+  }
+
+  // Otherwise, return as-is (already a ticker)
+  return normalized;
+}
+
 function getChainName(chain: string): string {
   switch (chain.toLowerCase()) {
     case "bitcoin":
@@ -170,12 +202,13 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
     let displayName: string;
 
     if (isManual) {
-      // For manual entries, use the ticker
-      key = (wallet.metadata?.ticker?.toLowerCase() || "unknown");
+      // For manual entries, normalize ticker/name to standard ticker symbol
+      const tickerOrName = wallet.metadata?.ticker || wallet.label || "unknown";
+      key = normalizeToTicker(tickerOrName);
       displayName = wallet.metadata?.cryptoName || wallet.metadata?.ticker?.toUpperCase() || wallet.label || "Manual Entry";
     } else {
-      // For connected wallets, convert chain name to ticker for grouping
-      key = getChainSymbol(wallet.chain).toLowerCase();
+      // For connected wallets, normalize chain name to ticker for grouping
+      key = normalizeToTicker(wallet.chain);
       displayName = getChainName(wallet.chain);
     }
 
