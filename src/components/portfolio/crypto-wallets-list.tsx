@@ -158,15 +158,26 @@ function formatTimeAgo(dateString: string): string {
 }
 
 
-// Group wallets by chain (manual entries grouped by ticker)
+// Group wallets by ticker (merge manual and connected wallets with same crypto)
 function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
   const groups = new Map<string, GroupedWallets>();
 
   for (const wallet of wallets) {
-    // For manual entries, group by ticker; for regular wallets, group by chain
     const isManual = wallet.chain.toLowerCase() === "manual";
-    const ticker = wallet.metadata?.ticker?.toLowerCase() || "unknown";
-    const key = isManual ? `manual-${ticker}` : wallet.chain.toLowerCase();
+
+    // Normalize key to ticker symbol so manual BTC and connected Bitcoin group together
+    let key: string;
+    let displayName: string;
+
+    if (isManual) {
+      // For manual entries, use the ticker
+      key = (wallet.metadata?.ticker?.toLowerCase() || "unknown");
+      displayName = wallet.metadata?.cryptoName || wallet.metadata?.ticker?.toUpperCase() || wallet.label || "Manual Entry";
+    } else {
+      // For connected wallets, convert chain name to ticker for grouping
+      key = getChainSymbol(wallet.chain).toLowerCase();
+      displayName = getChainName(wallet.chain);
+    }
 
     // Determine if this is a buy, sell, or transfer action
     const action = wallet.metadata?.action || "buy";
@@ -177,16 +188,16 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
     const balanceContribution = isTransfer ? 0 : (isSell ? -wallet.balance : wallet.balance);
     const balanceUsdContribution = isTransfer ? 0 : (isSell ? -wallet.balanceUsd : wallet.balanceUsd);
 
-    // Get display name for manual entries (use cryptoName or ticker)
-    const displayName = isManual
-      ? (wallet.metadata?.cryptoName || wallet.metadata?.ticker?.toUpperCase() || wallet.label || "Manual Entry")
-      : wallet.chain;
-
     if (groups.has(key)) {
       const group = groups.get(key)!;
       group.totalBalance += balanceContribution;
       group.totalBalanceUsd += balanceUsdContribution;
       group.wallets.push(wallet);
+      // If we're adding a non-manual wallet, update to use its display name
+      if (!isManual) {
+        group.chain = displayName;
+        group.isManual = false;
+      }
     } else {
       groups.set(key, {
         chain: displayName,
