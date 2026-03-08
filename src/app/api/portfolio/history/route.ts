@@ -79,8 +79,11 @@ function buildHistoryFromActivities(
     const date = wallet.createdAt.split("T")[0];
     if (startDate && date < startDate) continue;
 
-    const current = dateMap.get(date) || { assets: 0, liabilities: 0 };
     const action = (wallet.metadata as { action?: string } | null)?.action || "buy";
+    // Transfer actions don't affect portfolio value - they're just activity logs
+    if (action === "transfer") continue;
+
+    const current = dateMap.get(date) || { assets: 0, liabilities: 0 };
     const isSell = action === "sell";
     const valueChange = isSell ? -wallet.balanceUsd : wallet.balanceUsd;
 
@@ -136,6 +139,8 @@ function buildHistoryFromActivities(
       const date = wallet.createdAt.split("T")[0];
       if (date < startDate) {
         const action = (wallet.metadata as { action?: string } | null)?.action || "buy";
+        // Transfer actions don't affect portfolio value
+        if (action === "transfer") continue;
         const isSell = action === "sell";
         const valueChange = isSell ? -wallet.balanceUsd : wallet.balanceUsd;
         cumulativeAssets += valueChange;

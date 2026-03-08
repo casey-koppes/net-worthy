@@ -155,22 +155,29 @@ function formatTimeAgo(dateString: string): string {
 }
 
 
-// Group wallets by chain (manual entries grouped by label)
+// Group wallets by chain (manual entries grouped by ticker)
 function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
   const groups = new Map<string, GroupedWallets>();
 
   for (const wallet of wallets) {
-    // For manual entries, group by label; for regular wallets, group by chain
+    // For manual entries, group by ticker; for regular wallets, group by chain
     const isManual = wallet.chain.toLowerCase() === "manual";
-    const key = isManual ? `manual-${(wallet.label || "Manual Entry").toLowerCase()}` : wallet.chain.toLowerCase();
+    const ticker = wallet.metadata?.ticker?.toLowerCase() || "unknown";
+    const key = isManual ? `manual-${ticker}` : wallet.chain.toLowerCase();
 
     // Determine if this is a buy, sell, or transfer action
     const action = wallet.metadata?.action || "buy";
     const isSell = action === "sell";
+    const isTransfer = action === "transfer";
 
-    // Calculate value contribution: Buy/Transfer adds, Sell subtracts
-    const balanceContribution = isSell ? -wallet.balance : wallet.balance;
-    const balanceUsdContribution = isSell ? -wallet.balanceUsd : wallet.balanceUsd;
+    // Calculate value contribution: Buy adds, Sell subtracts, Transfer is neutral (just a log)
+    const balanceContribution = isTransfer ? 0 : (isSell ? -wallet.balance : wallet.balance);
+    const balanceUsdContribution = isTransfer ? 0 : (isSell ? -wallet.balanceUsd : wallet.balanceUsd);
+
+    // Get display name for manual entries (use cryptoName or ticker)
+    const displayName = isManual
+      ? (wallet.metadata?.cryptoName || wallet.metadata?.ticker?.toUpperCase() || wallet.label || "Manual Entry")
+      : wallet.chain;
 
     if (groups.has(key)) {
       const group = groups.get(key)!;
@@ -179,7 +186,7 @@ function groupWallets(wallets: CryptoWallet[]): GroupedWallets[] {
       group.wallets.push(wallet);
     } else {
       groups.set(key, {
-        chain: isManual ? (wallet.label || "Manual Entry") : wallet.chain,
+        chain: displayName,
         totalBalance: balanceContribution,
         totalBalanceUsd: balanceUsdContribution,
         wallets: [wallet],
