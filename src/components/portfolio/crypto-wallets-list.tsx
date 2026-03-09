@@ -755,31 +755,31 @@ export function CryptoWalletsList({
                                 </span>
                               </div>
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                {!isWalletManual && (
-                                  <img
-                                    src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
-                                    alt="Verified"
-                                    className="w-3 h-3"
-                                    title="Verified on-chain address"
-                                  />
-                                )}
-                                <span className="ml-0.5">
+                                <span>
                                   {isWalletManual
                                     ? `${formatCryptoBalance(wallet.metadata?.units || wallet.balance)} ${wallet.metadata?.ticker?.toUpperCase() || "units"}`
                                     : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
                                   {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
                                 </span>
                                 {!isWalletManual && (
-                                  <a
-                                    href={getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="ml-1 opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all"
-                                    title="View on blockchain"
-                                  >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                  </a>
+                                  <>
+                                    <img
+                                      src="https://cdn-icons-png.flaticon.com/512/7641/7641727.png"
+                                      alt="Verified"
+                                      className="w-3 h-3 ml-1"
+                                      title="Verified on-chain address"
+                                    />
+                                    <a
+                                      href={getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all"
+                                      title="View on blockchain"
+                                    >
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </>
                                 )}
                               </span>
                             </div>
