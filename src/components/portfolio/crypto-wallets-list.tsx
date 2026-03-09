@@ -463,7 +463,7 @@ export function CryptoWalletsList({
             Add Crypto
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
             className="size-9"
             onClick={() => setShowAllocation(!showAllocation)}
