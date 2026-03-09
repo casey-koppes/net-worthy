@@ -494,31 +494,57 @@ export function CryptoWalletsList({
                   const centerX = 150;
                   const centerY = 125;
                   const radius = 90;
-                  let currentAngle = -Math.PI / 2; // Start from top
 
                   // Generate colors based on index
                   const getColor = (index: number) => {
-                    const hues = [30, 210, 280, 160, 340, 50, 190, 250]; // Orange, blue, purple, teal, pink, yellow, cyan, indigo
+                    const hues = [30, 210, 280, 160, 340, 50, 190, 250];
                     const hue = hues[index % hues.length];
                     const lightness = 50 + (index % 3) * 10;
                     return `hsl(${hue}, 80%, ${lightness}%)`;
                   };
 
-                  return groupedWallets.map((group, index) => {
-                    const percentage = totalValue > 0 ? group.totalBalanceUsd / totalValue : 0;
-                    const angle = percentage * Math.PI * 2;
-                    const startAngle = currentAngle;
-                    const endAngle = currentAngle + angle;
-                    currentAngle = endAngle;
+                  // Pre-calculate all slices with their angles
+                  const slices: { group: typeof groupedWallets[0]; startAngle: number; endAngle: number; index: number }[] = [];
+                  let currentAngle = -Math.PI / 2; // Start from top
 
-                    // Calculate arc path
+                  groupedWallets.forEach((group, index) => {
+                    const percentage = totalValue > 0 ? group.totalBalanceUsd / totalValue : 0;
+                    if (percentage > 0) {
+                      const angle = percentage * Math.PI * 2;
+                      slices.push({
+                        group,
+                        startAngle: currentAngle,
+                        endAngle: currentAngle + angle,
+                        index,
+                      });
+                      currentAngle += angle;
+                    }
+                  });
+
+                  // Handle single item (full circle)
+                  if (slices.length === 1) {
+                    return (
+                      <circle
+                        cx={centerX}
+                        cy={centerY}
+                        r={radius}
+                        fill={getColor(slices[0].index)}
+                        stroke="white"
+                        strokeWidth="2"
+                      />
+                    );
+                  }
+
+                  return slices.map((slice) => {
+                    const { group, startAngle, endAngle, index } = slice;
+                    const angle = endAngle - startAngle;
+
+                    // Calculate arc path points
                     const x1 = centerX + radius * Math.cos(startAngle);
                     const y1 = centerY + radius * Math.sin(startAngle);
                     const x2 = centerX + radius * Math.cos(endAngle);
                     const y2 = centerY + radius * Math.sin(endAngle);
                     const largeArc = angle > Math.PI ? 1 : 0;
-
-                    if (percentage <= 0) return null;
 
                     return (
                       <path
