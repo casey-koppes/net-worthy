@@ -27,6 +27,58 @@ interface FollowingUser {
   nip05: string | null;
 }
 
+// Sample posts for when the feed is empty
+const SAMPLE_POSTS = [
+  {
+    id: "sample-1",
+    author: { name: "Sarah Chen", handle: "@sarahfinance", avatar: "SC" },
+    content: "Just hit a huge milestone - my portfolio crossed $100K! 🎉 The secret? Consistent monthly contributions and staying the course during market dips. Started with just $500/month 3 years ago. Time in the market > timing the market.",
+    timestamp: "2h ago",
+    likes: 47,
+    comments: 12,
+  },
+  {
+    id: "sample-2",
+    author: { name: "Marcus Williams", handle: "@marcuswealthbuilder", avatar: "MW" },
+    content: "My top 5 tips for growing your net worth in 2026:\n\n1. Automate your investments (set it and forget it)\n2. Max out your 401k match - it's free money!\n3. Keep 3-6 months emergency fund in HYSA\n4. Diversify across asset classes\n5. Track everything (love using Net-Worthy for this!)\n\nWhat would you add? 👇",
+    timestamp: "4h ago",
+    likes: 89,
+    comments: 34,
+  },
+  {
+    id: "sample-3",
+    author: { name: "Emma Rodriguez", handle: "@emmainvests", avatar: "ER" },
+    content: "Unpopular opinion: You don't need to pick individual stocks to build wealth. A simple 3-fund portfolio (US stocks, international stocks, bonds) has beaten most active managers over 20+ years. Keep it simple, keep fees low, stay invested. 📈",
+    timestamp: "6h ago",
+    likes: 156,
+    comments: 45,
+  },
+  {
+    id: "sample-4",
+    author: { name: "David Park", handle: "@davidfire", avatar: "DP" },
+    content: "Celebrating 5 years on my FIRE journey! Net worth went from -$20K (student loans) to $450K. The biggest game changers:\n\n• Increased income by 60% through skill building\n• Lived below my means (50% savings rate)\n• Invested aggressively in index funds\n• Added real estate as passive income\n\nIf I can do it, so can you! 💪",
+    timestamp: "8h ago",
+    likes: 234,
+    comments: 67,
+  },
+  {
+    id: "sample-5",
+    author: { name: "Lisa Thompson", handle: "@lisabudgets", avatar: "LT" },
+    content: "PSA: Your net worth includes more than just investments!\n\n✓ Cash & savings\n✓ Investment accounts\n✓ Retirement accounts\n✓ Real estate equity\n✓ Crypto holdings\n✓ Business value\n\nMinus liabilities (mortgages, loans, credit cards)\n\nAre you tracking all of these? The full picture matters! 📊",
+    timestamp: "12h ago",
+    likes: 78,
+    comments: 21,
+  },
+  {
+    id: "sample-6",
+    author: { name: "James Mitchell", handle: "@jameswealth", avatar: "JM" },
+    content: "The compound interest math that changed my perspective:\n\nInvesting $500/month at 8% average return:\n• 10 years = $91,473\n• 20 years = $294,510\n• 30 years = $745,180\n\nStarting 10 years earlier is worth more than doubling your contributions later. Time is your greatest asset! ⏰",
+    timestamp: "1d ago",
+    likes: 312,
+    comments: 89,
+  },
+];
+
 export default function CommunityPage() {
   const { dbUserId, pubkey, profile } = useAuthStore();
   const [feed, setFeed] = useState<NDKEvent[]>([]);
@@ -189,11 +241,43 @@ export default function CommunityPage() {
                   ))}
                 </div>
               ) : feed.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    No posts yet. Be the first to share!
-                  </CardContent>
-                </Card>
+                <>
+                  <Card className="bg-muted/30 border-dashed">
+                    <CardContent className="py-4 text-center text-muted-foreground text-sm">
+                      Showing sample posts • Connect your Nostr account to see live content
+                    </CardContent>
+                  </Card>
+                  {SAMPLE_POSTS.map((post) => (
+                    <Card key={post.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              {post.author.avatar}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{post.author.name}</span>
+                              <span className="text-muted-foreground text-sm">{post.author.handle}</span>
+                              <span className="text-muted-foreground text-sm">•</span>
+                              <span className="text-muted-foreground text-sm">{post.timestamp}</span>
+                            </div>
+                            <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
+                            <div className="flex items-center gap-6 mt-4 text-muted-foreground text-sm">
+                              <span className="flex items-center gap-1">
+                                ❤️ {post.likes}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                💬 {post.comments}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
               ) : (
                 feed.map((event) => (
                   <PostCard key={event.id} event={event} />
