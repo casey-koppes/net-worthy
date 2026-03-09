@@ -126,7 +126,7 @@ function getBlockchainExplorerUrl(chain: string, address: string, transactionId?
     const txid = transactionId || address.replace("txn-", "");
     switch (chain.toLowerCase()) {
       case "bitcoin":
-        return `https://blockstream.info/tx/${txid}`;
+        return `https://mempool.space/tx/${txid}`;
       case "ethereum":
         return `https://etherscan.io/tx/${txid}`;
       case "solana":
@@ -134,14 +134,14 @@ function getBlockchainExplorerUrl(chain: string, address: string, transactionId?
       case "polygon":
         return `https://polygonscan.com/tx/${txid}`;
       default:
-        return `https://blockstream.info/tx/${txid}`;
+        return `https://mempool.space/tx/${txid}`;
     }
   }
 
   // Otherwise, link to the wallet address
   switch (chain.toLowerCase()) {
     case "bitcoin":
-      return `https://blockstream.info/address/${address}`;
+      return `https://mempool.space/address/${address}`;
     case "ethereum":
       return `https://etherscan.io/address/${address}`;
     case "solana":
@@ -149,7 +149,7 @@ function getBlockchainExplorerUrl(chain: string, address: string, transactionId?
     case "polygon":
       return `https://polygonscan.com/address/${address}`;
     default:
-      return `https://blockstream.info/address/${address}`;
+      return `https://mempool.space/address/${address}`;
   }
 }
 
