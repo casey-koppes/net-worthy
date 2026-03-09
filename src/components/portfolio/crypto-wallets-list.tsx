@@ -474,126 +474,9 @@ export function CryptoWalletsList({
         </div>
       </CardHeader>
       <CardContent>
-        {/* Allocation Pie Chart */}
-        {showAllocation && (
-          <div className="border rounded-lg p-4 bg-muted/30 mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold">Crypto Allocation</h4>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setShowAllocation(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="h-[250px] w-full">
-              <svg viewBox="0 0 300 250" className="w-full h-full">
-                {(() => {
-                  const centerX = 150;
-                  const centerY = 125;
-                  const radius = 90;
-
-                  // Generate colors based on index
-                  const getColor = (index: number) => {
-                    const hues = [30, 210, 280, 160, 340, 50, 190, 250];
-                    const hue = hues[index % hues.length];
-                    const lightness = 50 + (index % 3) * 10;
-                    return `hsl(${hue}, 80%, ${lightness}%)`;
-                  };
-
-                  // Pre-calculate all slices with their angles
-                  const slices: { group: typeof groupedWallets[0]; startAngle: number; endAngle: number; index: number }[] = [];
-                  let currentAngle = -Math.PI / 2; // Start from top
-
-                  groupedWallets.forEach((group, index) => {
-                    const percentage = totalValue > 0 ? group.totalBalanceUsd / totalValue : 0;
-                    if (percentage > 0) {
-                      const angle = percentage * Math.PI * 2;
-                      slices.push({
-                        group,
-                        startAngle: currentAngle,
-                        endAngle: currentAngle + angle,
-                        index,
-                      });
-                      currentAngle += angle;
-                    }
-                  });
-
-                  // Handle single item (full circle)
-                  if (slices.length === 1) {
-                    return (
-                      <circle
-                        cx={centerX}
-                        cy={centerY}
-                        r={radius}
-                        fill={getColor(slices[0].index)}
-                        stroke="white"
-                        strokeWidth="2"
-                      />
-                    );
-                  }
-
-                  return slices.map((slice) => {
-                    const { group, startAngle, endAngle, index } = slice;
-                    const angle = endAngle - startAngle;
-
-                    // Calculate arc path points
-                    const x1 = centerX + radius * Math.cos(startAngle);
-                    const y1 = centerY + radius * Math.sin(startAngle);
-                    const x2 = centerX + radius * Math.cos(endAngle);
-                    const y2 = centerY + radius * Math.sin(endAngle);
-                    const largeArc = angle > Math.PI ? 1 : 0;
-
-                    return (
-                      <path
-                        key={group.chain}
-                        d={`M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                        fill={getColor(index)}
-                        stroke="white"
-                        strokeWidth="2"
-                      />
-                    );
-                  });
-                })()}
-              </svg>
-            </div>
-            <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
-              {groupedWallets.map((group, index) => {
-                const percentage = totalValue > 0 ? (group.totalBalanceUsd / totalValue) * 100 : 0;
-                const hues = [30, 210, 280, 160, 340, 50, 190, 250];
-                const hue = hues[index % hues.length];
-                const lightness = 50 + (index % 3) * 10;
-                const color = `hsl(${hue}, 80%, ${lightness}%)`;
-                const ticker = group.isManual
-                  ? group.wallets[0]?.metadata?.ticker?.toUpperCase() || "?"
-                  : getChainSymbol(group.chain);
-
-                return (
-                  <div key={group.chain} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="truncate">{ticker}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-muted-foreground text-xs">
-                        {percentage.toFixed(1)}%
-                      </span>
-                      <span className="font-medium text-xs">
-                        {formatCurrency(group.totalBalanceUsd)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+        <div className={`flex gap-4 ${showAllocation ? "flex-col lg:flex-row" : ""}`}>
+          {/* Main Content */}
+          <div className={showAllocation ? "flex-1 lg:w-2/3" : "w-full"}>
         <Tabs defaultValue="wallets" className="w-full">
           {/* Chrome-style tabs */}
           <div className="border-b">
@@ -856,6 +739,128 @@ export function CryptoWalletsList({
             />
           </TabsContent>
         </Tabs>
+          </div>
+
+          {/* Allocation Panel - Pie Chart (slides out to the right) */}
+          {showAllocation && (
+            <div className="lg:w-1/3 border rounded-lg p-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold">Crypto Allocation</h4>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowAllocation(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="h-[250px] w-full">
+                <svg viewBox="0 0 300 250" className="w-full h-full">
+                  {(() => {
+                    const centerX = 150;
+                    const centerY = 125;
+                    const radius = 90;
+
+                    // Generate colors based on index
+                    const getColor = (index: number) => {
+                      const hues = [30, 210, 280, 160, 340, 50, 190, 250];
+                      const hue = hues[index % hues.length];
+                      const lightness = 50 + (index % 3) * 10;
+                      return `hsl(${hue}, 80%, ${lightness}%)`;
+                    };
+
+                    // Pre-calculate all slices with their angles
+                    const slices: { group: typeof groupedWallets[0]; startAngle: number; endAngle: number; index: number }[] = [];
+                    let currentAngle = -Math.PI / 2; // Start from top
+
+                    groupedWallets.forEach((group, index) => {
+                      const percentage = totalValue > 0 ? group.totalBalanceUsd / totalValue : 0;
+                      if (percentage > 0) {
+                        const angle = percentage * Math.PI * 2;
+                        slices.push({
+                          group,
+                          startAngle: currentAngle,
+                          endAngle: currentAngle + angle,
+                          index,
+                        });
+                        currentAngle += angle;
+                      }
+                    });
+
+                    // Handle single item (full circle)
+                    if (slices.length === 1) {
+                      return (
+                        <circle
+                          cx={centerX}
+                          cy={centerY}
+                          r={radius}
+                          fill={getColor(slices[0].index)}
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                      );
+                    }
+
+                    return slices.map((slice) => {
+                      const { group, startAngle, endAngle, index } = slice;
+                      const angle = endAngle - startAngle;
+
+                      // Calculate arc path points
+                      const x1 = centerX + radius * Math.cos(startAngle);
+                      const y1 = centerY + radius * Math.sin(startAngle);
+                      const x2 = centerX + radius * Math.cos(endAngle);
+                      const y2 = centerY + radius * Math.sin(endAngle);
+                      const largeArc = angle > Math.PI ? 1 : 0;
+
+                      return (
+                        <path
+                          key={group.chain}
+                          d={`M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                          fill={getColor(index)}
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+              </div>
+              <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
+                {groupedWallets.map((group, index) => {
+                  const percentage = totalValue > 0 ? (group.totalBalanceUsd / totalValue) * 100 : 0;
+                  const hues = [30, 210, 280, 160, 340, 50, 190, 250];
+                  const hue = hues[index % hues.length];
+                  const lightness = 50 + (index % 3) * 10;
+                  const color = `hsl(${hue}, 80%, ${lightness}%)`;
+                  const ticker = group.isManual
+                    ? group.wallets[0]?.metadata?.ticker?.toUpperCase() || "?"
+                    : getChainSymbol(group.chain);
+
+                  return (
+                    <div key={group.chain} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="truncate">{ticker}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-muted-foreground text-xs">
+                          {percentage.toFixed(1)}%
+                        </span>
+                        <span className="font-medium text-xs">
+                          {formatCurrency(group.totalBalanceUsd)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
 
       {/* Edit Dialog */}
