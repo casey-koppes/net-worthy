@@ -48,13 +48,13 @@ export default function Home() {
         <section id="features" className="border-t bg-muted/50 py-16 md:py-24">
           <div className="container">
             <h2 className="mb-12 text-center text-3xl font-bold">
-              Everything You Need
+              What can it do?
             </h2>
             <div className="grid gap-8 md:grid-cols-3">
               <div className="rounded-lg border bg-background p-6">
-                <div className="mb-4 text-2xl">Connected</div>
+                <div className="mb-4 text-2xl">Net Worth</div>
                 <h3 className="mb-2 text-xl font-semibold">
-                  Connect Your Accounts
+                  Track Your Portfolio
                 </h3>
                 <p className="text-muted-foreground">
                   Securely link bank accounts, brokerages, and crypto wallets.
@@ -63,24 +63,24 @@ export default function Home() {
               </div>
 
               <div className="rounded-lg border bg-background p-6">
-                <div className="mb-4 text-2xl">Private</div>
+                <div className="mb-4 text-2xl">Follow</div>
                 <h3 className="mb-2 text-xl font-semibold">
-                  Privacy First
+                  Connect with Community
                 </h3>
                 <p className="text-muted-foreground">
-                  Your financial data is encrypted and private by default. Choose
-                  what to share with friends or the community.
+                  Choose to stay private or share your net worth journey with
+                  your friends or the community.
                 </p>
               </div>
 
               <div className="rounded-lg border bg-background p-6">
-                <div className="mb-4 text-2xl">Social</div>
+                <div className="mb-4 text-2xl">Verify Creditworthiness</div>
                 <h3 className="mb-2 text-xl font-semibold">
-                  Built on Nostr
+                  Validate Networth Via API
                 </h3>
                 <p className="text-muted-foreground">
-                  Your identity lives on Nostr - decentralized and portable.
-                  Follow friends, share milestones, and send Lightning tips.
+                  Third parties can verify user net worth through our secure API,
+                  enabling trust and transparency for loans, rentals, and partnerships.
                 </p>
               </div>
             </div>

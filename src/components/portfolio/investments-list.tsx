@@ -632,6 +632,9 @@ export function InvestmentsList({
     ][i % 8],
   }));
 
+  // Calculate total from pieChartData for accurate percentage display
+  const pieChartTotal = pieChartData.reduce((sum, d) => sum + d.value, 0);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -949,7 +952,7 @@ export function InvestmentsList({
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-muted-foreground text-xs">
-                        {((item.value / total) * 100).toFixed(1)}%
+                        {((item.value / pieChartTotal) * 100).toFixed(1)}%
                       </span>
                       <span className="font-medium text-xs">{formatCurrency(item.value)}</span>
                     </div>

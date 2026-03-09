@@ -387,6 +387,8 @@ export function CryptoWalletsList({
 
   const groupedWallets = groupWallets(wallets);
   const totalValue = wallets.reduce((sum, wallet) => sum + (wallet.balanceUsd || 0), 0);
+  // Calculate total from grouped wallets for accurate pie chart percentage display
+  const pieChartTotal = groupedWallets.reduce((sum, g) => sum + g.totalBalanceUsd, 0);
   const uniqueCount = groupedWallets.length;
 
   // Extract tickers for news component
@@ -828,7 +830,7 @@ export function CryptoWalletsList({
               </div>
               <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
                 {groupedWallets.map((group, index) => {
-                  const percentage = totalValue > 0 ? (group.totalBalanceUsd / totalValue) * 100 : 0;
+                  const percentage = pieChartTotal > 0 ? (group.totalBalanceUsd / pieChartTotal) * 100 : 0;
                   const hues = [30, 210, 280, 160, 340, 50, 190, 250];
                   const hue = hues[index % hues.length];
                   const lightness = 50 + (index % 3) * 10;

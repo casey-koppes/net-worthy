@@ -224,6 +224,7 @@ export default function PortfolioPage() {
             <TabsTrigger value="all">All Assets</TabsTrigger>
             <TabsTrigger value="bank">Bank Accounts</TabsTrigger>
             <TabsTrigger value="investments">Investments</TabsTrigger>
+            <TabsTrigger value="crypto">Crypto Wallets</TabsTrigger>
             <TabsTrigger value="other">Other Assets</TabsTrigger>
           </TabsList>
 
@@ -268,16 +269,19 @@ export default function PortfolioPage() {
             />
           </TabsContent>
 
+          <TabsContent value="crypto" className="space-y-6">
+            <CryptoWalletsList
+              onAddWallet={() => setIsAddWalletOpen(true)}
+              refreshTrigger={refreshTrigger}
+              onTotalChange={handleCryptoTotalChange}
+            />
+          </TabsContent>
+
           <TabsContent value="other" className="space-y-6">
             <AssetsList
               onAddAsset={() => setIsAddAssetOpen(true)}
               refreshTrigger={refreshTrigger}
               onTotalChange={handleAssetsTotalChange}
-            />
-            <CryptoWalletsList
-              onAddWallet={() => setIsAddWalletOpen(true)}
-              refreshTrigger={refreshTrigger}
-              onTotalChange={handleCryptoTotalChange}
             />
           </TabsContent>
         </Tabs>
