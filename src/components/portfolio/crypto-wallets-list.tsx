@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, Plus, Minus } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Minus, ExternalLink } from "lucide-react";
 import { CryptoNews } from "./crypto-news";
 import { CryptoInsights } from "./crypto-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -47,6 +47,7 @@ interface CryptoWallet {
     purchaseUnitPrice?: number;
     cryptoName?: string;
     description?: string;
+    transactionId?: string;
   } | null;
 }
 
@@ -210,6 +211,39 @@ function formatTimeAgo(dateString: string): string {
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
 
   return date.toLocaleDateString();
+}
+
+function getBlockchainExplorerUrl(chain: string, address: string, transactionId?: string): string {
+  // If it's a transaction ID entry, link to the transaction
+  if (transactionId || address.startsWith("txn-")) {
+    const txid = transactionId || address.replace("txn-", "");
+    switch (chain.toLowerCase()) {
+      case "bitcoin":
+        return `https://mempool.space/tx/${txid}`;
+      case "ethereum":
+        return `https://etherscan.io/tx/${txid}`;
+      case "solana":
+        return `https://solscan.io/tx/${txid}`;
+      case "polygon":
+        return `https://polygonscan.com/tx/${txid}`;
+      default:
+        return `https://mempool.space/tx/${txid}`;
+    }
+  }
+
+  // Otherwise, link to the wallet address
+  switch (chain.toLowerCase()) {
+    case "bitcoin":
+      return `https://mempool.space/address/${address}`;
+    case "ethereum":
+      return `https://etherscan.io/address/${address}`;
+    case "solana":
+      return `https://solscan.io/account/${address}`;
+    case "polygon":
+      return `https://polygonscan.com/address/${address}`;
+    default:
+      return `https://mempool.space/address/${address}`;
+  }
 }
 
 
@@ -590,12 +624,24 @@ export function CryptoWalletsList({
                               </div>
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 {!isWalletManual && (
-                                  <img
-                                    src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
-                                    alt="Verified"
-                                    className="w-3 h-3"
-                                    title="Verified on-chain address"
-                                  />
+                                  <>
+                                    <img
+                                      src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
+                                      alt="Verified"
+                                      className="w-3 h-3"
+                                      title="Verified on-chain address"
+                                    />
+                                    <a
+                                      href={getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="hover:text-blue-600 transition-colors"
+                                      title="View on blockchain"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  </>
                                 )}
                                 <span className="ml-0.5">
                                   {isWalletManual
