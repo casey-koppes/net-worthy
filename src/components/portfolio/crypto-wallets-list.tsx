@@ -624,24 +624,12 @@ export function CryptoWalletsList({
                               </div>
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 {!isWalletManual && (
-                                  <>
-                                    <img
-                                      src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
-                                      alt="Verified"
-                                      className="w-3 h-3"
-                                      title="Verified on-chain address"
-                                    />
-                                    <a
-                                      href={getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="hover:text-blue-600 transition-colors"
-                                      title="View on blockchain"
-                                    >
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  </>
+                                  <img
+                                    src="https://cdn-icons-png.flaticon.com/512/1895/1895474.png"
+                                    alt="Verified"
+                                    className="w-3 h-3"
+                                    title="Verified on-chain address"
+                                  />
                                 )}
                                 <span className="ml-0.5">
                                   {isWalletManual
@@ -649,6 +637,18 @@ export function CryptoWalletsList({
                                     : `${formatCryptoBalance(wallet.balance)} ${getChainSymbol(wallet.chain)}`}
                                   {wallet.createdAt && ` • ${formatTimeAgo(wallet.createdAt)}`}
                                 </span>
+                                {!isWalletManual && (
+                                  <a
+                                    href={getBlockchainExplorerUrl(wallet.chain, wallet.address, wallet.metadata?.transactionId)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="ml-1 hover:text-blue-600 transition-colors"
+                                    title="View on blockchain"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                )}
                               </span>
                             </div>
                           </div>
