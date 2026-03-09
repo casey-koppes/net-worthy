@@ -582,7 +582,7 @@ export function CryptoWalletsList({
                         </div>
                         {/* Activity card */}
                         <div
-                          className="flex-1 flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                          className="group flex-1 flex items-center justify-between rounded-md border bg-background p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             // Include currentUnitPrice from performance data for cost basis calculation
@@ -643,7 +643,7 @@ export function CryptoWalletsList({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="ml-1 hover:text-blue-600 transition-colors"
+                                    className="ml-1 opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all"
                                     title="View on blockchain"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5" />
