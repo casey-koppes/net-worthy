@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, PieChart, X } from "lucide-react";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { usePortfolioStore } from "@/lib/stores/portfolio-store";
 import { getPeriodLabel } from "@/lib/utils/period-utils";
@@ -128,6 +128,7 @@ export function ManualAssetsList({
   const [editingAsset, setEditingAsset] = useState<EditableAsset | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showAllocation, setShowAllocation] = useState(false);
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null } => {
@@ -197,11 +198,25 @@ export function ManualAssetsList({
             {uniqueCount} {type === "assets" ? "asset" : "liability"}{uniqueCount !== 1 ? "s" : ""} - Total: {formatCurrency(total)}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={onAddItem}>
-          Add {type === "assets" ? "Asset" : "Liability"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onAddItem}>
+            Add {type === "assets" ? "Asset" : "Liability"}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-9"
+            onClick={() => setShowAllocation(!showAllocation)}
+            title="View allocation report"
+          >
+            <PieChart className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        <div className={`flex gap-4 ${showAllocation ? "flex-col lg:flex-row" : ""}`}>
+          {/* Main Content */}
+          <div className={showAllocation ? "flex-1 lg:w-2/3" : "w-full"}>
         {isLoading ? (
           <div className="text-center py-4 text-muted-foreground">Loading...</div>
         ) : items.length === 0 ? (
@@ -296,6 +311,129 @@ export function ManualAssetsList({
             })}
           </div>
         )}
+          </div>
+
+          {/* Allocation Panel - Pie Chart (slides out to the right) */}
+          {showAllocation && (
+            <div className="lg:w-1/3 border rounded-lg p-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold">{title} Allocation</h4>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setShowAllocation(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="h-[250px] w-full">
+                <svg viewBox="0 0 300 250" className="w-full h-full">
+                  {(() => {
+                    const centerX = 150;
+                    const centerY = 125;
+                    const radius = 90;
+
+                    // Generate colors based on index
+                    const getColor = (index: number) => {
+                      const hues = type === "assets"
+                        ? [120, 150, 180, 90, 60, 200, 30, 240] // Green-ish for assets
+                        : [0, 30, 350, 15, 340, 45, 320, 60]; // Red-ish for liabilities
+                      const hue = hues[index % hues.length];
+                      const lightness = 50 + (index % 3) * 10;
+                      return `hsl(${hue}, 70%, ${lightness}%)`;
+                    };
+
+                    // Pre-calculate all slices with their angles
+                    const slices: { group: typeof groupedItems[0]; startAngle: number; endAngle: number; index: number }[] = [];
+                    let currentAngle = -Math.PI / 2; // Start from top
+
+                    groupedItems.forEach((group, index) => {
+                      const percentage = total > 0 ? group.totalValue / total : 0;
+                      if (percentage > 0) {
+                        const angle = percentage * Math.PI * 2;
+                        slices.push({
+                          group,
+                          startAngle: currentAngle,
+                          endAngle: currentAngle + angle,
+                          index,
+                        });
+                        currentAngle += angle;
+                      }
+                    });
+
+                    // Handle single item (full circle)
+                    if (slices.length === 1) {
+                      return (
+                        <circle
+                          cx={centerX}
+                          cy={centerY}
+                          r={radius}
+                          fill={getColor(slices[0].index)}
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                      );
+                    }
+
+                    return slices.map((slice) => {
+                      const { group, startAngle, endAngle, index } = slice;
+                      const angle = endAngle - startAngle;
+
+                      // Calculate arc path points
+                      const x1 = centerX + radius * Math.cos(startAngle);
+                      const y1 = centerY + radius * Math.sin(startAngle);
+                      const x2 = centerX + radius * Math.cos(endAngle);
+                      const y2 = centerY + radius * Math.sin(endAngle);
+                      const largeArc = angle > Math.PI ? 1 : 0;
+
+                      return (
+                        <path
+                          key={group.name}
+                          d={`M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                          fill={getColor(index)}
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+              </div>
+              <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
+                {groupedItems.map((group, index) => {
+                  const percentage = total > 0 ? (group.totalValue / total) * 100 : 0;
+                  const hues = type === "assets"
+                    ? [120, 150, 180, 90, 60, 200, 30, 240]
+                    : [0, 30, 350, 15, 340, 45, 320, 60];
+                  const hue = hues[index % hues.length];
+                  const lightness = 50 + (index % 3) * 10;
+                  const color = `hsl(${hue}, 70%, ${lightness}%)`;
+
+                  return (
+                    <div key={group.name} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="truncate">{group.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-muted-foreground text-xs">
+                          {percentage.toFixed(1)}%
+                        </span>
+                        <span className="font-medium text-xs">
+                          {formatCurrency(group.totalValue)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
 
       {/* Edit Dialog */}
