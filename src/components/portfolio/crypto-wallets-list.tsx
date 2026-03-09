@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronDown, ChevronUp, Plus, Minus, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Minus, ExternalLink, PieChart, X } from "lucide-react";
 import { CryptoNews } from "./crypto-news";
 import { CryptoInsights } from "./crypto-insights";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -330,6 +330,7 @@ export function CryptoWalletsList({
   const [editingWallet, setEditingWallet] = useState<EditableCryptoWallet | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showAllocation, setShowAllocation] = useState(false);
 
   // Helper to get performance for an item
   const getItemPerformance = (itemId: string): { percent: number | null; dollarChange: number | null; currentUnitPrice: number | null } => {
@@ -457,11 +458,116 @@ export function CryptoWalletsList({
             {formatCurrency(totalValue)} total
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" onClick={onAddWallet}>
-          Add Crypto
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onAddWallet}>
+            Add Crypto
+          </Button>
+          <Button
+            variant="default"
+            size="icon"
+            className="size-9"
+            onClick={() => setShowAllocation(!showAllocation)}
+            title="View allocation report"
+          >
+            <PieChart className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {/* Allocation Pie Chart */}
+        {showAllocation && (
+          <div className="border rounded-lg p-4 bg-muted/30 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold">Crypto Allocation</h4>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setShowAllocation(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="h-[250px] w-full">
+              <svg viewBox="0 0 300 250" className="w-full h-full">
+                {(() => {
+                  const centerX = 150;
+                  const centerY = 125;
+                  const radius = 90;
+                  let currentAngle = -Math.PI / 2; // Start from top
+
+                  // Generate colors based on index
+                  const getColor = (index: number) => {
+                    const hues = [30, 210, 280, 160, 340, 50, 190, 250]; // Orange, blue, purple, teal, pink, yellow, cyan, indigo
+                    const hue = hues[index % hues.length];
+                    const lightness = 50 + (index % 3) * 10;
+                    return `hsl(${hue}, 80%, ${lightness}%)`;
+                  };
+
+                  return groupedWallets.map((group, index) => {
+                    const percentage = totalValue > 0 ? group.totalBalanceUsd / totalValue : 0;
+                    const angle = percentage * Math.PI * 2;
+                    const startAngle = currentAngle;
+                    const endAngle = currentAngle + angle;
+                    currentAngle = endAngle;
+
+                    // Calculate arc path
+                    const x1 = centerX + radius * Math.cos(startAngle);
+                    const y1 = centerY + radius * Math.sin(startAngle);
+                    const x2 = centerX + radius * Math.cos(endAngle);
+                    const y2 = centerY + radius * Math.sin(endAngle);
+                    const largeArc = angle > Math.PI ? 1 : 0;
+
+                    if (percentage <= 0) return null;
+
+                    return (
+                      <path
+                        key={group.chain}
+                        d={`M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                        fill={getColor(index)}
+                        stroke="white"
+                        strokeWidth="2"
+                      />
+                    );
+                  });
+                })()}
+              </svg>
+            </div>
+            <div className="space-y-2 mt-2 max-h-[200px] overflow-y-auto">
+              {groupedWallets.map((group, index) => {
+                const percentage = totalValue > 0 ? (group.totalBalanceUsd / totalValue) * 100 : 0;
+                const hues = [30, 210, 280, 160, 340, 50, 190, 250];
+                const hue = hues[index % hues.length];
+                const lightness = 50 + (index % 3) * 10;
+                const color = `hsl(${hue}, 80%, ${lightness}%)`;
+                const ticker = group.isManual
+                  ? group.wallets[0]?.metadata?.ticker?.toUpperCase() || "?"
+                  : getChainSymbol(group.chain);
+
+                return (
+                  <div key={group.chain} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="truncate">{ticker}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-muted-foreground text-xs">
+                        {percentage.toFixed(1)}%
+                      </span>
+                      <span className="font-medium text-xs">
+                        {formatCurrency(group.totalBalanceUsd)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="wallets" className="w-full">
           {/* Chrome-style tabs */}
           <div className="border-b">
