@@ -784,8 +784,8 @@ export function InvestmentsList({
                           const isBuy = action === "buy";
                           const displayShares = item.metadata?.shares || shares;
 
-                          const { ticker } = parseDescription(item.description);
-                          const displayTicker = item.metadata?.ticker || ticker;
+                          // Always use the parent group's ticker for activity records
+                          const displayTicker = group.ticker;
 
                           return (
                             <div key={item.id} className="flex items-center gap-2">
