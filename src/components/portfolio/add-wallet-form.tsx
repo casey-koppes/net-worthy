@@ -32,6 +32,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
   const [chain, setChain] = useState<string>("");
   const [address, setAddress] = useState("");
   const [transactionId, setTransactionId] = useState("");
+  const [txPurchaseUnitPrice, setTxPurchaseUnitPrice] = useState("");
 
   // Manual entry state
   const [manualFormData, setManualFormData] = useState({
@@ -117,6 +118,14 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
     setError(null);
 
     try {
+      // Build metadata for transaction ID entries
+      const txMetadata = transactionId
+        ? {
+            transactionId,
+            ...(txPurchaseUnitPrice ? { purchaseUnitPrice: parseFloat(txPurchaseUnitPrice) } : {}),
+          }
+        : undefined;
+
       const response = await fetch("/api/crypto/wallets", {
         method: "POST",
         headers: {
@@ -126,7 +135,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
           userId: dbUserId,
           chain,
           address: address || `txn-${transactionId}`,
-          metadata: transactionId ? { transactionId } : undefined,
+          metadata: txMetadata,
         }),
       });
 
@@ -257,8 +266,8 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                   value={chain}
                   onValueChange={(value) => {
                     setChain(value);
-                    // Clear transaction ID if switching away from Bitcoin
-                    if (value !== "bitcoin") setTransactionId("");
+                    // Clear transaction ID if switching to unsupported chain
+                    if (value !== "bitcoin" && value !== "ethereum") setTransactionId("");
                   }}
                 >
                   <SelectTrigger className="w-full bg-background border-input">
@@ -289,8 +298,8 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                 />
               </div>
 
-              {/* Transaction ID only supported for Bitcoin */}
-              {chain === "bitcoin" && (
+              {/* Transaction ID supported for Bitcoin and Ethereum */}
+              {(chain === "bitcoin" || chain === "ethereum") && (
                 <>
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
@@ -307,7 +316,7 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                     <Label htmlFor="transactionId">Transaction ID</Label>
                     <Input
                       id="transactionId"
-                      placeholder="Enter transaction ID (txid)"
+                      placeholder={chain === "ethereum" ? "Enter transaction hash (0x...)" : "Enter transaction ID (txid)"}
                       value={transactionId}
                       onChange={(e) => {
                         setTransactionId(e.target.value);
@@ -317,6 +326,31 @@ export function AddWalletForm({ onSuccess, onCancel }: AddWalletFormProps) {
                       disabled={!!address}
                     />
                   </div>
+
+                  {/* Purchase Unit Price for Transaction ID entries */}
+                  {transactionId && (
+                    <div className="space-y-2">
+                      <Label htmlFor="txPurchaseUnitPrice">Purchase Unit Price ($)</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          id="txPurchaseUnitPrice"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className="pl-7 bg-background border-input"
+                          value={txPurchaseUnitPrice}
+                          onChange={(e) => setTxPurchaseUnitPrice(e.target.value)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Optional. If set, Value = Units × Purchase Price. Otherwise uses current market price.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 

@@ -62,6 +62,47 @@ export async function fetchBitcoinTransaction(txid: string): Promise<{ balance: 
   return { balance, balanceUsd };
 }
 
+// Fetch Ethereum transaction data from public RPC
+export async function fetchEthereumTransaction(txid: string): Promise<{ balance: number; balanceUsd: number }> {
+  // Use eth_getTransactionByHash to fetch transaction details
+  const response = await fetch(CHAIN_CONFIGS.ethereum.apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_getTransactionByHash",
+      params: [txid],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch Ethereum transaction");
+  }
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(data.error.message || "Invalid Ethereum transaction");
+  }
+
+  if (!data.result) {
+    throw new Error("Transaction not found");
+  }
+
+  // Get the value from the transaction (in wei, hex-encoded)
+  const valueWei = BigInt(data.result.value);
+  const balance = Number(valueWei) / 1e18; // Convert wei to ETH
+
+  // Fetch current price
+  const price = await fetchCryptoPrice(CHAIN_CONFIGS.ethereum.priceApiId);
+  const balanceUsd = balance * price;
+
+  return { balance, balanceUsd };
+}
+
 // Fetch Bitcoin balance from Blockstream API
 export async function fetchBitcoinBalance(address: string): Promise<number> {
   const response = await fetch(

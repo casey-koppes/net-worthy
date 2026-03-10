@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, cryptoWallets, activityLog } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { encryptNumber, decryptNumber } from "@/lib/encryption";
-import { fetchWalletData, fetchBitcoinTransaction, CHAIN_CONFIGS } from "@/lib/crypto/chains";
+import { fetchWalletData, fetchBitcoinTransaction, fetchEthereumTransaction, CHAIN_CONFIGS } from "@/lib/crypto/chains";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
 
 // GET - Fetch all wallets for a user
@@ -105,7 +105,21 @@ export async function POST(request: NextRequest) {
         if (chain === "bitcoin") {
           const txData = await fetchBitcoinTransaction(txid);
           balance = txData.balance;
-          balanceUsd = txData.balanceUsd;
+          // If purchaseUnitPrice is provided, use it to calculate balanceUsd
+          if (metadata?.purchaseUnitPrice && balance > 0) {
+            balanceUsd = balance * metadata.purchaseUnitPrice;
+          } else {
+            balanceUsd = txData.balanceUsd;
+          }
+        } else if (chain === "ethereum") {
+          const txData = await fetchEthereumTransaction(txid);
+          balance = txData.balance;
+          // If purchaseUnitPrice is provided, use it to calculate balanceUsd
+          if (metadata?.purchaseUnitPrice && balance > 0) {
+            balanceUsd = balance * metadata.purchaseUnitPrice;
+          } else {
+            balanceUsd = txData.balanceUsd;
+          }
         } else {
           // Other chains don't support transaction fetching yet
           balanceFetchError = `Transaction fetching not yet supported for ${chain}. Balance set to 0.`;
