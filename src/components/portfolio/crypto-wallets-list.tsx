@@ -707,10 +707,11 @@ export function CryptoWalletsList({
 
                                 const dollarChange = currentValue - costBasis;
                                 const isGain = dollarChange >= 0;
-                                // Hide if change is essentially zero (less than $0.01) due to floating point
-                                if (Math.abs(dollarChange) < 0.01) return null;
+                                // Use grey for essentially zero change, green for gains, red for losses
+                                const isZero = Math.abs(dollarChange) < 0.01;
+                                const colorClass = isZero ? "text-gray-400" : (isGain ? "text-green-600" : "text-red-600");
                                 return (
-                                  <span className={`text-xs ${isGain ? "text-green-600" : "text-red-600"}`}>
+                                  <span className={`text-xs ${colorClass}`}>
                                     ({isGain ? "+" : "-"}{formatCompactCurrency(Math.abs(dollarChange))})
                                   </span>
                                 );
