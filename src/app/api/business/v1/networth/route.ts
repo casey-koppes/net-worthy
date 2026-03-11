@@ -65,16 +65,15 @@ interface NetWorthResponse {
 // GET endpoint - retrieve net worth by email
 export async function GET(request: NextRequest) {
   try {
-    // Get API key from header
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    // Get API key from X-API-Key header
+    const apiKey = request.headers.get("X-API-Key");
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "Missing or invalid API key. Use Authorization: Bearer <api_key>" },
+        { error: "Missing API key. Use X-API-Key header" },
         { status: 401 }
       );
     }
 
-    const apiKey = authHeader.slice(7);
     const key = await verifyApiKey(apiKey);
 
     if (!key) {
@@ -307,16 +306,15 @@ export async function GET(request: NextRequest) {
 // POST endpoint - same functionality, accepts email in body
 export async function POST(request: NextRequest) {
   try {
-    // Get API key from header
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    // Get API key from X-API-Key header
+    const apiKey = request.headers.get("X-API-Key");
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "Missing or invalid API key. Use Authorization: Bearer <api_key>" },
+        { error: "Missing API key. Use X-API-Key header" },
         { status: 401 }
       );
     }
 
-    const apiKey = authHeader.slice(7);
     const key = await verifyApiKey(apiKey);
 
     if (!key) {
