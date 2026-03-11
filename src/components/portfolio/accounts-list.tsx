@@ -246,7 +246,7 @@ export function AccountsList({
         <div>
           <CardTitle>Bank Accounts</CardTitle>
           <CardDescription>
-            {accounts.length} account{accounts.length !== 1 ? "s" : ""}
+            {accounts.length} account{accounts.length !== 1 ? "s" : ""} - {formatCurrency(accounts.reduce((sum, acc) => sum + acc.balance, 0))} total
           </CardDescription>
         </div>
         <Button variant="outline" size="sm" onClick={onAddManualAccount}>

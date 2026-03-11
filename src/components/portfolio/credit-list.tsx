@@ -204,7 +204,7 @@ export function CreditList({
         <div>
           <CardTitle>Credit Cards</CardTitle>
           <CardDescription>
-            {allAccounts.length} card{allAccounts.length !== 1 ? "s" : ""}
+            {allAccounts.length} card{allAccounts.length !== 1 ? "s" : ""} - {formatCurrency(allAccounts.reduce((sum, acc) => sum + acc.balance, 0))} owed
           </CardDescription>
         </div>
         <div className="flex gap-2">

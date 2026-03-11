@@ -209,7 +209,7 @@ export function LoansList({
         <div>
           <CardTitle>Loans</CardTitle>
           <CardDescription>
-            {allAccounts.length} account{allAccounts.length !== 1 ? "s" : ""}
+            {allAccounts.length} account{allAccounts.length !== 1 ? "s" : ""} - {formatCurrency(allAccounts.reduce((sum, acc) => sum + acc.balance, 0))} owed
           </CardDescription>
         </div>
         <div className="flex gap-2">

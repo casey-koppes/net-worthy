@@ -511,10 +511,12 @@ export function InvestmentsList({
         );
         setInvestments(investmentItems);
 
-        // Report total to parent
-        const total = investmentItems
-          .filter((i: Investment) => i.isAsset)
-          .reduce((sum: number, item: Investment) => sum + item.value, 0);
+        // Report total to parent (accounting for buy/sell actions)
+        const total = investmentItems.reduce((sum: number, item: Investment) => {
+          const action = item.metadata?.action || "buy";
+          const isBuy = action === "buy";
+          return sum + (isBuy ? item.value : -item.value);
+        }, 0);
         onTotalChange?.(total);
       }
     } catch (error) {
@@ -560,9 +562,8 @@ export function InvestmentsList({
   }, [investments]);
 
   const groupedInvestments = groupInvestments(investments);
-  const total = investments
-    .filter((i) => i.isAsset)
-    .reduce((sum, item) => sum + item.value, 0);
+  // Calculate total from grouped investments to properly account for buy/sell
+  const total = groupedInvestments.reduce((sum, g) => sum + g.totalValue, 0);
 
   // Count unique groups for display
   const uniqueCount = groupedInvestments.length;
