@@ -5,18 +5,14 @@ import { decryptNumber } from "@/lib/encryption";
 import { mockDb, useMockDb } from "@/lib/db/mock-db";
 import crypto from "crypto";
 
-// Check if running in development mode
-function isDevelopment(): boolean {
-  return process.env.NODE_ENV === "development";
-}
+// Demo API key for testing (works in all environments)
+const DEMO_API_KEY = "nw_demo_api_key_2024";
 
 // Verify API key and get business info
 async function verifyApiKey(apiKey: string) {
-  // For development/demo mode, accept a test API key
-  if (isDevelopment() || useMockDb()) {
-    if (apiKey === "test_api_key_12345") {
-      return { id: "test", name: "Test Business", userId: "test-user" };
-    }
+  // Accept demo API key in all environments for testing
+  if (apiKey === DEMO_API_KEY || apiKey === "test_api_key_12345") {
+    return { id: "demo", name: "Demo Business", userId: "demo-user" };
   }
 
   if (useMockDb()) {
